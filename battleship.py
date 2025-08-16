@@ -1,1 +1,3 @@
-print("🚢 Welcome to Battleship!")
+print("===================================")
+print(" 🚢 Welcome to Battleship Game 🚢 ")
+print("===================================")
