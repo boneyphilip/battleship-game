@@ -1,36 +1,40 @@
+# Battleship Game - Step D (A3 input + validation + one-shot result)
 
-# Battleship Game - Step B (Board Setup)
+import random
+
 
 # Step 1: Welcome message
 print("===================================")
 print(" 🚢 Welcome to Battleship Game 🚢 ")
-print("===================================")
+print("===================================\n")
 
-# Step 2 : Instruction for player
-print("\nInstructions:")
+# Step 2: Instructions for player
+print("Instructions:")
 print("1. This is a Battleship game running in your terminal.")
 print("2. You need to find and sink enemy ships.")
 print("3. You will enter your guess (row, column).")
-print("4. If your guess is correct, you will see 'Hit!', otherwise 'Miss!'.")
+print("4. If your guess is correct, you will see 'Hit!', "
+      "otherwise 'Miss!'.")
 print("5. The game ends when all ships are sunk.\n")
 
 # Step 3: Create board
 board_size = 8  # set the grid size to 8x8
 
-
-# Create a 2D list to represent the ocean
-# Each cell contains '~' to show water
+# Create a 2D list to represent the ocean ("~" = water)
 board = [["~"] * board_size for _ in range(board_size)]
 
+
 # Step 4: Function to print the board nicely
-def print_board(board):
+def print_board(bd):
+    """Pretty print the board with column numbers and row letters."""
     # Print column numbers at the top
     print("   " + " ".join(str(i) for i in range(board_size)))
 
     # Print each row with alphabet instead of numbers
-    for idx, row in enumerate(board):
+    for idx, row in enumerate(bd):
         row_letter = chr(65 + idx)  # 65 = 'A', 66 = 'B', etc.
         print(f"{row_letter}  " + " ".join(row))
+
 
 # Step 5: Show empty board
 print("👉 Here is your ocean board:\n")
@@ -39,15 +43,15 @@ print_board(board)
 print("\n👉 Next step: we will hide a ship on this board.")
 
 # Step 6: Place a ship randomly
-import random
-
-# Choose a random row and column for the ship
 ship_row = random.randint(0, board_size - 1)
 ship_col = random.randint(0, board_size - 1)
 
 # (For debugging: we can print the hidden ship position)
 # ⚠️ Later we will remove this, for now keep it for learning
-print(f"\n[DEBUG] Computer's ship is hidden at: Row={chr(65 + ship_row)}, Col={ship_col}")
+print(
+    f"\n[DEBUG] Computer's ship is hidden at: "
+    f"Row={chr(65 + ship_row)}, Col={ship_col}"
+)
 
 # Step 7: Ask player for a guess
 print("\n👉 Now it's your turn to find the ship!")
@@ -70,17 +74,17 @@ else:
     else:
         col = int(digits)
         if not (0 <= col < board_size):
-            print(f"❌ Column out of range. Use 0-{board_size-1}.")
+            print(f"❌ Column out of range. Use 0-{board_size - 1}.")
         else:
             row = ord(row_letter) - 65
 
             # Check guess vs hidden ship
             if row == ship_row and col == ship_col:
                 print("🎉 HIT! You sank the battleship! 🚢🔥")
-                board[row][col] = "X"   # mark hit
+                board[row][col] = "X"  # mark hit
             else:
                 print("💦 MISS! The ship is still hidden.")
-                board[row][col] = "O"   # mark miss
+                board[row][col] = "O"  # mark miss
 
             # Show board after guess
             print("\n👉 Updated board:")
