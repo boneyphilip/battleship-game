@@ -38,4 +38,50 @@ print_board(board)
 
 print("\n👉 Next step: we will hide a ship on this board.")
 
+# Step 6: Place a ship randomly
+import random
 
+# Choose a random row and column for the ship
+ship_row = random.randint(0, board_size - 1)
+ship_col = random.randint(0, board_size - 1)
+
+# (For debugging: we can print the hidden ship position)
+# ⚠️ Later we will remove this, for now keep it for learning
+print(f"\n[DEBUG] Computer's ship is hidden at: Row={chr(65 + ship_row)}, Col={ship_col}")
+
+# Step 7: Ask player for a guess
+print("\n👉 Now it's your turn to find the ship!")
+
+# Input like "A3" or "c5"
+guess = input("Enter position (e.g., A3): ").strip().upper()
+
+# Basic validation
+if len(guess) < 2:
+    print("❌ Please type a letter followed by a number, e.g., A3.")
+else:
+    row_letter = guess[0]
+    digits = guess[1:]  # remaining characters (e.g., "3")
+
+    # Check row letter range (A to A+board_size-1)
+    if not ("A" <= row_letter <= chr(65 + board_size - 1)):
+        print(f"❌ Row must be A-{chr(65 + board_size - 1)}.")
+    elif not digits.isdigit():
+        print("❌ Column must be a number, e.g., A3 (3 is the column).")
+    else:
+        col = int(digits)
+        if not (0 <= col < board_size):
+            print(f"❌ Column out of range. Use 0-{board_size-1}.")
+        else:
+            row = ord(row_letter) - 65
+
+            # Check guess vs hidden ship
+            if row == ship_row and col == ship_col:
+                print("🎉 HIT! You sank the battleship! 🚢🔥")
+                board[row][col] = "X"   # mark hit
+            else:
+                print("💦 MISS! The ship is still hidden.")
+                board[row][col] = "O"   # mark miss
+
+            # Show board after guess
+            print("\n👉 Updated board:")
+            print_board(board)
