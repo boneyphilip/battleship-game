@@ -53,39 +53,50 @@ print(
     f"Row={chr(65 + ship_row)}, Col={ship_col}"
 )
 
-# Step 7: Ask player for a guess
-print("\n👉 Now it's your turn to find the ship!")
+# Step 7: Game loop for guessing
+while True:
+    print("\n👉 Now it's your turn to find the ship!")
 
-# Input like "A3" or "c5"
-guess = input("Enter position (e.g., A3): ").strip().upper()
+    # Input like "A3" or "c5"
+    guess = input("Enter position (e.g., A3): ").strip().upper()
 
-# Basic validation
-if len(guess) < 2:
-    print("❌ Please type a letter followed by a number, e.g., A3.")
-else:
+    # Basic validation
+    if len(guess) < 2:
+        print("❌ Please type a letter followed by a number, e.g., A3.")
+        continue  # skip rest and ask again
+
     row_letter = guess[0]
     digits = guess[1:]  # remaining characters (e.g., "3")
 
     # Check row letter range (A to A+board_size-1)
     if not ("A" <= row_letter <= chr(65 + board_size - 1)):
         print(f"❌ Row must be A-{chr(65 + board_size - 1)}.")
+        continue
     elif not digits.isdigit():
         print("❌ Column must be a number, e.g., A3 (3 is the column).")
+        continue
+
+    col = int(digits)
+    if not (0 <= col < board_size):
+        print(f"❌ Column out of range. Use 0-{board_size - 1}.")
+        continue
+
+    row = ord(row_letter) - 65
+
+    # Check guess vs hidden ship
+    if row == ship_row and col == ship_col:
+        print("🎉 HIT! You sank the battleship! 🚢🔥")
+        board[row][col] = "X"  # mark hit
+        print("\n👉 Final board:")
+        print_board(board)
+        break  # game ends
     else:
-        col = int(digits)
-        if not (0 <= col < board_size):
-            print(f"❌ Column out of range. Use 0-{board_size - 1}.")
+        if board[row][col] in ["O", "X"]:
+            print("⚠️ You already tried this spot!")
         else:
-            row = ord(row_letter) - 65
+            print("💦 MISS! The ship is still hidden.")
+            board[row][col] = "O"  # mark miss
 
-            # Check guess vs hidden ship
-            if row == ship_row and col == ship_col:
-                print("🎉 HIT! You sank the battleship! 🚢🔥")
-                board[row][col] = "X"  # mark hit
-            else:
-                print("💦 MISS! The ship is still hidden.")
-                board[row][col] = "O"  # mark miss
-
-            # Show board after guess
-            print("\n👉 Updated board:")
-            print_board(board)
+    # Show board after guess
+    print("\n👉 Updated board:")
+    print_board(board)
