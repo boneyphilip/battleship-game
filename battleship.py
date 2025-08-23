@@ -1,13 +1,26 @@
-# Battleship Game — Solo mode with two boards, side-by-side display
-# -----------------------------------------------------------------
+# Battleship Game — Solo mode with two boards, side-by-side, columns 1..N
+# ----------------------------------------------------------------------
 # What this version does:
 # - Shows TWO boards side by side:
 #     • Left  : Enemy board (you only see what you have discovered: X/O/~)
 #     • Right : Your board (your ships are visible as 'S')
-# - You keep guessing until all enemy ships are sunk.
-# - This structure prepares us for the next step (adding enemy turns).
+# - Columns are labeled 1..board_size (more natural for humans).
+# - You type guesses like A1, C7, H8 (NOT A0).
+# - Internally we still use 0-based indexing, so we convert (col-1).
+# - Screen refreshes each turn so the view looks “live”.
+# - This structure prepares us to add Enemy turns later.
 
-import random  # Used for random ship placement
+import os      # for clearing the console screen (live feel)
+import random  # for random ship placement
+
+
+# -------------------------------
+# Small helper to clear the screen
+# -------------------------------
+def clear_screen():
+    """Clear the terminal so the game looks like it updates in place."""
+    # Windows uses 'cls'; macOS/Linux use 'clear'
+    os.system("cls" if os.name == "nt" else "clear")
 
 
 # -------------------------------
@@ -18,17 +31,20 @@ print(" 🚢 Welcome to Battleship Game 🚢 ")
 print("===================================\n")
 
 print("Instructions:")
-print("1. The grid is 8x8: rows A–H, columns 0–7.")
-print("2. You need to find and sink ALL hidden enemy ships.")
-print("3. Enter your guess like A3. Type Q anytime to quit.")
-print("4. Symbols: X = Hit, O = Miss, ~ = Water (unknown), S = Your ship (on your board).")
-print("5. For now, only YOU shoot. (Enemy turn will be added later.)\n")
+print("1) The grid is 8x8: rows A–H, columns 1–8 (NOT starting at 0).")
+print("2) Your goal is to find and sink ALL hidden enemy ships.")
+print("3) Enter guesses like A1, C7, H8. Type Q anytime to quit.")
+print("4) Symbols: X = Hit, O = Miss, ~ = Water (unknown), S = Your ship (on your board).")
+print("5) For now, only YOU shoot. (Enemy turn will be added later.)\n")
+
+input("Press Enter to start... ")
+clear_screen()
 
 
 # -------------------------------
 # Step 2: Create Boards
 # -------------------------------
-board_size = 8  # Grid size 8x8 (rows A-H, columns 0-7)
+board_size = 8  # Grid size 8x8 (rows A-H, columns 1-8 for display)
 
 # enemy_view: what you can see about the enemy board (starts all water "~")
 enemy_view = [["~"] * board_size for _ in range(board_size)]
@@ -41,41 +57,50 @@ player_board = [["~"] * board_size for _ in range(board_size)]
 # Step 3: Printing Helpers
 # -------------------------------
 def print_board(bd):
-    """Print one board with column numbers and row letters."""
-    print("   " + " ".join(str(i) for i in range(board_size)))
+    """
+    Print one board with:
+    - Column numbers starting from 1 (human-friendly).
+    - Row letters A..H on the left.
+    """
+    # Column numbers: "1 2 3 ... board_size"
+    print("   " + " ".join(str(i) for i in range(1, board_size + 1)))
+    # Each row: "A  ~ ~ ~ ~ ~ ~ ~ ~"
     for idx, row in enumerate(bd):
-        row_letter = chr(65 + idx)  # 0→A, 1→B, ...
+        row_letter = chr(65 + idx)  # Convert index 0..7 to 'A'..'H'
         print(f"{row_letter}  " + " ".join(row))
 
 
 def display_game_boards(enemy_view, player_board):
     """
-    Display enemy board (left) and player board (right) side by side
-    with proper alignment. Enemy board shows only what the player
-    has discovered so far, while the player board shows their own ships.
+    Display enemy board (left) and player board (right) side by side,
+    aligned neatly. Enemy board shows only what you have discovered
+    so far; your board shows your ships.
     """
-    # Column numbers (0 1 2 ...)
-    col_numbers = " ".join(str(i) for i in range(board_size))
+    # Column numbers string for one board, using 1..N
+    col_numbers = " ".join(str(i) for i in range(1, board_size + 1))
 
-    # Width of one board block (row label + columns)
-    # Example: "A  " (3 chars) + len("0 1 2 3 4 5 6 7")
+    # Width of one printed board block:
+    #  - "A  " (3 chars) + len(col_numbers)
     block_width = 3 + len(col_numbers)
 
     # Gap between the two boards
     gap = "   "
 
-    # Header row (columns for both boards)
+    # Titles (roughly centered over each board)
+    left_title = "ENEMY (what you know)"
+    right_title = "YOU (your ships)"
+    print(left_title.ljust(block_width) + gap + right_title)
+
+    # Header line: column numbers for both boards
     left_header = "   " + col_numbers
     right_header = "   " + col_numbers
     print(left_header.ljust(block_width) + gap + right_header)
 
-    # Print rows A..H
+    # Rows A..H for both boards
     for idx in range(board_size):
         row_letter = chr(65 + idx)
         left_row = f"{row_letter}  " + " ".join(enemy_view[idx])
         right_row = f"{row_letter}  " + " ".join(player_board[idx])
-
-        # Align the left block, then add gap + right block
         print(left_row.ljust(block_width) + gap + right_row)
 
 
@@ -100,78 +125,97 @@ while len(player_ships) < num_ships:
         player_ships.add((r, c))
         player_board[r][c] = "S"
 
-# Debug info (only for learning; remove later for fair play)
-debug_enemy = [f"{chr(65 + r)}{c}" for (r, c) in sorted(enemy_ships)]
-debug_player = [f"{chr(65 + r)}{c}" for (r, c) in sorted(player_ships)]
+# Debug info (for learning only). Shows friendly A1-based positions.
+debug_enemy = [f"{chr(65 + r)}{c + 1}" for (r, c) in sorted(enemy_ships)]
+debug_player = [f"{chr(65 + r)}{c + 1}" for (r, c) in sorted(player_ships)]
 print(f"[DEBUG] Enemy ships: {debug_enemy}")
 print(f"[DEBUG] Your ships:  {debug_player}")
+input("\n(Dev note) Press Enter to hide debug and start playing...")
+clear_screen()
 
 
 # -------------------------------
 # Step 5: Game Loop (solo shooting)
 # -------------------------------
-hits = 0  # How many enemy ships have been hit
+hits = 0              # How many enemy ships have been hit so far
+last_message = ""     # Last feedback text (Hit/Miss/Validation) shown under boards
 
 while hits < num_ships:
-    # Show boards side by side
-    print("\n=== Enemy (left) vs You (right) ===")
+    # Refresh the view at the start of each turn
+    clear_screen()
+
+    # Header + boards
+    print("===================================")
+    print(" 🚢 Battleship — Solo Mode (Prep for Versus)")
+    print("===================================\n")
     display_game_boards(enemy_view, player_board)
 
-    # Take player input like "A3"
-    guess = input("\nEnter position (e.g., A3) or Q to quit: ").strip().upper()
+    # Show the last action/result under the boards (if any)
+    if last_message:
+        print("\n" + last_message)
+
+    # Ask for the next guess (A1..H8 or Q)
+    guess = input("\nEnter position (e.g., A1) or Q to quit: ").strip().upper()
 
     # Quit option
     if guess == "Q":
+        clear_screen()
         print("👋 You quit the game. Bye!")
         break
 
-    # Basic validation
+    # Basic format validation: need at least 2 chars (e.g., 'A1')
     if len(guess) < 2:
-        print("❌ Please type a letter followed by a number, e.g., A3.")
+        last_message = "❌ Please type a letter followed by a number, e.g., A1."
         continue
 
     row_letter = guess[0]
-    digits = guess[1:]
+    digits = guess[1:]  # the numeric part (1..board_size as text)
 
-    # Check row and column formats
+    # Validate row letter is within A..(A + board_size - 1)
     if not ("A" <= row_letter <= chr(65 + board_size - 1)):
-        print(f"❌ Row must be between A and {chr(65 + board_size - 1)}.")
+        last_message = f"❌ Row must be between A and {chr(65 + board_size - 1)}."
         continue
+
+    # Validate column is numeric and within 1..board_size
     if not digits.isdigit():
-        print("❌ Column must be a number, e.g., A3.")
+        last_message = "❌ Column must be a number, e.g., A1 or B8."
         continue
 
-    col = int(digits)
-    if not (0 <= col < board_size):
-        print(f"❌ Column out of range. Use 0-{board_size - 1}.")
+    # Convert to int, but remember the display is 1-based (so we subtract 1)
+    col_1based = int(digits)
+    if not (1 <= col_1based <= board_size):
+        last_message = f"❌ Column out of range. Use 1–{board_size}."
         continue
 
-    row = ord(row_letter) - 65  # Convert A→0, B→1, ...
+    # Convert to zero-based column index for internal board access
+    col = col_1based - 1
 
-    # Already guessed this enemy cell?
+    # Convert row letter to zero-based row index (A→0, B→1, ...)
+    row = ord(row_letter) - 65
+
+    # Prevent shooting the same enemy cell twice
     if enemy_view[row][col] in ("O", "X"):
-        print("⚠️ You already tried this spot. Pick another.")
+        last_message = "⚠️ You already tried that spot. Pick another."
         continue
 
-    # Hit or miss against enemy ships
+    # Resolve hit or miss against enemy ships
     if (row, col) in enemy_ships:
-        print("🎯 HIT! You sank part of an enemy ship! 🚢🔥")
         enemy_view[row][col] = "X"
         hits += 1
-        enemy_ships.remove((row, col))  # remove the ship cell you found
+        enemy_ships.remove((row, col))
+        last_message = f"🎯 HIT at {row_letter}{col_1based}! Enemy ship damaged! 🚢🔥"
     else:
-        print("💦 MISS! Nothing here.")
         enemy_view[row][col] = "O"
-
-    # Optional: show updated boards again right away
-    print("\n👉 Updated boards:")
-    display_game_boards(enemy_view, player_board)
+        last_message = f"💦 MISS at {row_letter}{col_1based}. Nothing there."
 
 
 # -------------------------------
 # Step 6: End of Game
 # -------------------------------
 if hits == num_ships:
-    print("\n=== Final Boards ===")
+    clear_screen()
+    print("===================================")
+    print(" 🚢 Battleship — Solo Mode (Prep for Versus)")
+    print("===================================\n")
     display_game_boards(enemy_view, player_board)
-    print("🏆 Congratulations, YOU WIN! All enemy ships are sunk! 🎮")
+    print("\n🏆 Congratulations, YOU WIN! All enemy ships are sunk! 🎮")
