@@ -1,266 +1,247 @@
-# Battleship Game — Solo mode, color UI, side-by-side boards, columns 1..N
-# -----------------------------------------------------------------------
-# What this version does:
-# - Uses colorama to color the terminal (Windows-friendly).
-# - Shows TWO boards side by side:
-#     • Left  : Enemy board (you only see what you discovered: X/O/~)
-#     • Right : Your board (your ships are visible as 'S')
-# - Columns labeled 1..N (human-friendly). You guess like A1, C7, H8.
-# - Live refresh each turn (screen clears and redraws for a clean look).
-# - Prepares the structure for adding enemy turns later.
+# Battleship — Emoji Grid, Visual-Width Padding, Centered Headers, Alternating Turns
+# ---------------------------------------------------------------------------------
+# Two boards side-by-side (Enemy Fleet on left, Your Fleet on right).
+# User fires at enemy grid; enemy fires back at random. Game ends when one fleet is sunk.
+# Emojis can be double-width in terminals, so wcwidth is used to align columns precisely.
 
-import os                   # for clearing the console screen (live refresh)
-import random               # for random ship placement
-from colorama import init, Fore, Style  # for colored text in terminal
+# ========= 1) Imports =========
+import os
+import random
+import re
+from colorama import init, Fore, Style
+from wcwidth import wcswidth  # measures on-screen (visual) width so emojis align
 
-
-# -------------------------------
-# Color setup (Windows safe)
-# -------------------------------
-# autoreset=True means each print returns to default color automatically.
+# Make ANSI colors reset automatically (safe on Windows too)
 init(autoreset=True)
 
+# ========= 2) Constants (symbols, labels, layout) =========
+# Grid symbols
+WATER = "🌊"       # unknown water
+MISS  = "💦"       # shot that missed
+HIT   = "💥"       # shot that hit
+SHIP_CHAR = "🚢"   # player ship (visible on right board)
 
-# -------------------------------
-# Small helper to clear the screen
-# -------------------------------
+# Section titles
+LEFT_TITLE  = "Enemy Fleet"
+RIGHT_TITLE = "Your Fleet"
+
+# Board and layout
+BOARD_SIZE = 8                 # rows A–H, columns 1–8
+CELL_VISUAL = 3                # visible width of one cell slot (increase to 4 if needed)
+GAP_BETWEEN_BOARDS = " " * 10  # gap between the two boards
+
+# ========= 3) ANSI / width helpers =========
+# Regex to strip ANSI color codes before measuring width
+ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+def strip_ansi(s: str) -> str:
+    """Remove ANSI codes so width measuring only sees visible characters."""
+    return ANSI_RE.sub("", s)
+
+def pad_visual(s: str, width: int) -> str:
+    """
+    Pad s with spaces so its *visual* width equals width.
+    Handles emojis (often width 2) and ignores ANSI color codes.
+    """
+    vis = wcswidth(strip_ansi(s))
+    if vis < 0:  # fallback (should not happen often)
+        vis = len(strip_ansi(s))
+    return s + " " * max(0, width - vis)
+
+# ========= 4) Tiny UI helpers =========
+def strong_yellow(text: str) -> str:
+    """Bright yellow (titles)."""
+    return Style.BRIGHT + Fore.YELLOW + text + Style.RESET_ALL
+
+def strong_white(text: str) -> str:
+    """Bright white (row/column labels)."""
+    return Style.BRIGHT + Fore.WHITE + text + Style.RESET_ALL
+
 def clear_screen():
-    """Clear the terminal so the game looks like it updates in place."""
-    # Windows uses 'cls'; macOS/Linux use 'clear'
+    """Clear terminal to give the feel of one refreshing screen."""
     os.system("cls" if os.name == "nt" else "clear")
 
+# ========= 5) Cell + Board rendering =========
+def format_cell(symbol: str) -> str:
+    """
+    Return one cell padded to CELL_VISUAL columns.
+    Using plain emoji (no color) inside cells keeps width consistent.
+    """
+    return pad_visual(symbol, CELL_VISUAL)
 
-# -------------------------------
-# Step 1: Welcome + Instructions
-# -------------------------------
+def display_boards(enemy_view, player_board):
+    """
+    Draw both boards side-by-side:
+    - Titles centered over each board block.
+    - Column numbers aligned to cell slots.
+    - Rows labeled A..H on both sides.
+    """
+    # "A  " (3 chars) + N cell slots
+    board_width = 3 + (BOARD_SIZE * CELL_VISUAL)
+
+    # Titles: center first, then color (so ANSI codes don’t affect centering)
+    left_title  = strong_yellow(LEFT_TITLE.center(board_width))
+    right_title = strong_yellow(RIGHT_TITLE.center(board_width))
+    print(left_title + GAP_BETWEEN_BOARDS + right_title)
+
+    # Column numbers: each number gets the same slot width as a cell
+    nums_slots = "".join(format_cell(str(i)) for i in range(1, BOARD_SIZE + 1))
+    header_line = "   " + nums_slots  # align with row label area ("A  ")
+    print(strong_white(header_line) + GAP_BETWEEN_BOARDS + strong_white(header_line))
+
+    # Rows A..H
+    for r in range(BOARD_SIZE):
+        row_label = strong_white(chr(65 + r))  # 65→'A'
+        left_row  = "".join(format_cell(ch) for ch in enemy_view[r])
+        right_row = "".join(format_cell(ch) for ch in player_board[r])
+        print(f"{row_label}  {left_row}" + GAP_BETWEEN_BOARDS + f"{row_label}  {right_row}")
+
+# ========= 6) Enemy AI =========
+def enemy_take_one_shot(player_board, player_ships, tried):
+    """
+    Fire one random shot at player board.
+    - Avoids repeating positions using 'tried' set.
+    - Marks 💥 or 💦 on player board.
+    - Removes hit ship from player_ships.
+    Returns a short status message.
+    """
+    while True:
+        r = random.randint(0, BOARD_SIZE - 1)
+        c = random.randint(0, BOARD_SIZE - 1)
+        # skip already attempted or already marked cells
+        if (r, c) in tried or player_board[r][c] in (MISS, HIT):
+            tried.add((r, c))
+            continue
+        tried.add((r, c))
+        break
+
+    pos = f"{chr(65 + r)}{c + 1}"
+    if (r, c) in player_ships:
+        player_board[r][c] = HIT
+        player_ships.remove((r, c))
+        return f"👾 Enemy fires at {pos} — {HIT} Hit!"
+    else:
+        player_board[r][c] = MISS
+        return f"👾 Enemy fires at {pos} — {MISS} Miss."
+
+# ========= 7) Game state (boards + ships) =========
+# Enemy board as seen by the player (start unknown water everywhere)
+enemy_view   = [[WATER] * BOARD_SIZE for _ in range(BOARD_SIZE)]
+# Player board (shows player ships; other cells start as water)
+player_board = [[WATER] * BOARD_SIZE for _ in range(BOARD_SIZE)]
+
+NUM_SHIPS = 3  # ships per side
+
+# Hidden enemy ships (set of positions)
+enemy_ships = set()
+while len(enemy_ships) < NUM_SHIPS:
+    enemy_ships.add((random.randint(0, BOARD_SIZE - 1),
+                     random.randint(0, BOARD_SIZE - 1)))
+
+# Visible player ships on the right board
+player_ships = set()
+while len(player_ships) < NUM_SHIPS:
+    r = random.randint(0, BOARD_SIZE - 1)
+    c = random.randint(0, BOARD_SIZE - 1)
+    if (r, c) not in player_ships:
+        player_ships.add((r, c))
+        player_board[r][c] = SHIP_CHAR
+
+# ========= 8) Intro screen =========
+clear_screen()
 print("===================================")
-print(Style.BRIGHT + Fore.MAGENTA + " 🚢 Welcome to Battleship Game " + Style.RESET_ALL)
+print(Style.BRIGHT + Fore.MAGENTA + " 🚢 Welcome to Battleship " + Style.RESET_ALL)
 print("===================================\n")
-
-print(Style.BRIGHT + "Instructions:" + Style.RESET_ALL)
-print("1) The grid is 8x8: rows A–H, columns 1–8 (NOT starting at 0).")
-print("2) Your goal is to find and sink ALL hidden enemy ships.")
-print("3) Enter guesses like A1, C7, H8. Type Q anytime to quit.")
-print("4) Symbols: " +
-      Style.BRIGHT + Fore.RED + "X" + Style.RESET_ALL + " = Hit, " +
-      Fore.BLUE + "O" + Style.RESET_ALL + " = Miss, " +
-      Fore.CYAN + "~" + Style.RESET_ALL + " = Water (unknown), " +
-      Style.BRIGHT + Fore.GREEN + "S" + Style.RESET_ALL + " = Your ship (on your board).")
-print("5) For now, only YOU shoot. (Enemy turn will be added later.)\n")
-
+print(Style.BRIGHT + "How to play:" + Style.RESET_ALL)
+print("1) Grid is 8x8: rows A–H, columns 1–8.")
+print("2) Goal: sink all enemy ships.")
+print("3) Type A1, C7, H8 … or Q to quit.")
+print(f"4) Symbols: {HIT}=Hit  {MISS}=Miss  {WATER}=Water  {SHIP_CHAR}=Player ship.\n")
 input("Press Enter to start... ")
 clear_screen()
 
+# ========= 9) Main loop (alternating turns) =========
+player_msg = ""            # last message from the user’s shot
+enemy_msg  = ""            # last message from enemy shot
+enemy_tried = set()        # enemy’s attempted positions (avoid repeats)
 
-# -------------------------------
-# Step 2: Create Boards
-# -------------------------------
-board_size = 8  # Grid size 8x8 (rows A-H, columns 1–8 for display)
-
-# enemy_view: what you can see about the enemy board (starts all water "~")
-enemy_view = [["~"] * board_size for _ in range(board_size)]
-
-# player_board: your own board (we place your ships here and show them as "S")
-player_board = [["~"] * board_size for _ in range(board_size)]
-
-
-# -------------------------------
-# Step 3: Coloring helpers (UI)
-# -------------------------------
-def color_cell(ch: str) -> str:
-    """
-    Return a colored version of a single board cell:
-      ~ = dim cyan (unknown water)
-      O = blue (miss)
-      X = bright red (hit)
-      S = bright green (your ship, only on your board)
-    """
-    if ch == "X":
-        return Style.BRIGHT + Fore.RED + "X" + Style.RESET_ALL
-    if ch == "O":
-        return Fore.BLUE + "O" + Style.RESET_ALL
-    if ch == "S":
-        return Style.BRIGHT + Fore.GREEN + "S" + Style.RESET_ALL
-    # default '~'
-    return Fore.CYAN + "~" + Style.RESET_ALL
-
-
-def color_title(txt: str) -> str:
-    """Color for section titles/headings."""
-    return Style.BRIGHT + Fore.YELLOW + txt + Style.RESET_ALL
-
-
-def color_label(txt: str) -> str:
-    """Color for row/column labels."""
-    return Style.BRIGHT + Fore.WHITE + txt + Style.RESET_ALL
-
-
-# -------------------------------
-# Step 4: Printing helpers
-# -------------------------------
-def print_board(bd):
-    """
-    Print one board with:
-    - Column numbers starting from 1 (human-friendly).
-    - Row letters A..H on the left.
-    """
-    # Column numbers: "1 2 3 ... board_size"
-    print("   " + " ".join(str(i) for i in range(1, board_size + 1)))
-    # Each row: "A  ~ ~ ~ ~ ~ ~ ~ ~"
-    for idx, row in enumerate(bd):
-        row_letter = chr(65 + idx)  # Convert index 0..7 to 'A'..'H'
-        print(f"{row_letter}  " + " ".join(row))
-
-
-def display_game_boards(enemy_view, player_board):
-    """
-    Display enemy board (left) and player board (right) side by side
-    with proper alignment and colors.
-    - Enemy board shows only what you have discovered so far.
-    - Your board shows your ships.
-    """
-    # Column numbers string for one board, using 1..N
-    col_numbers = " ".join(str(i) for i in range(1, board_size + 1))
-
-    # Width of one printed board block:
-    #  - "A  " (3 chars) + len(col_numbers)
-    block_width = 3 + len(col_numbers)
-
-    # Gap between the two boards
-    gap = "   "
-
-    # Titles above each board
-    left_title = color_title("ENEMY (what you know)")
-    right_title = color_title("YOU (your ships)")
-    print(left_title.ljust(block_width) + gap + right_title)
-
-    # Header line: column numbers for both boards (colored)
-    left_header_col = "   " + " ".join(color_label(str(i)) for i in range(1, board_size + 1))
-    right_header_col = "   " + " ".join(color_label(str(i)) for i in range(1, board_size + 1))
-    print(left_header_col.ljust(block_width) + gap + right_header_col)
-
-    # Rows A..H for both boards
-    for idx in range(board_size):
-        row_letter = chr(65 + idx)
-        left_row_cells = " ".join(color_cell(c) for c in enemy_view[idx])
-        right_row_cells = " ".join(color_cell(c) for c in player_board[idx])
-        left_row = f"{color_label(row_letter)}  " + left_row_cells
-        right_row = f"{color_label(row_letter)}  " + right_row_cells
-        print(left_row.ljust(block_width) + gap + right_row)
-
-
-# -------------------------------
-# Step 5: Place Ships (enemy + yours)
-# -------------------------------
-num_ships = 3  # Number of ships for each side
-
-# Enemy ships (hidden) — you will try to find these
-enemy_ships = set()
-while len(enemy_ships) < num_ships:
-    r = random.randint(0, board_size - 1)
-    c = random.randint(0, board_size - 1)
-    enemy_ships.add((r, c))
-
-# Your ships (visible as 'S') — placed randomly for now
-player_ships = set()
-while len(player_ships) < num_ships:
-    r = random.randint(0, board_size - 1)
-    c = random.randint(0, board_size - 1)
-    if (r, c) not in player_ships:
-        player_ships.add((r, c))
-        player_board[r][c] = "S"
-
-# Debug info (for learning only). Shows friendly A1-based positions.
-debug_enemy = [f"{chr(65 + r)}{c + 1}" for (r, c) in sorted(enemy_ships)]
-debug_player = [f"{chr(65 + r)}{c + 1}" for (r, c) in sorted(player_ships)]
-print(Style.DIM + f"[DEBUG] Enemy ships: {debug_enemy}" + Style.RESET_ALL)
-print(Style.DIM + f"[DEBUG] Your ships:  {debug_player}" + Style.RESET_ALL)
-input("\n(Dev note) Press Enter to hide debug and start playing...")
-clear_screen()
-
-
-# -------------------------------
-# Step 6: Game Loop (solo shooting)
-# -------------------------------
-hits = 0              # How many enemy ships have been hit so far
-last_message = ""     # Last feedback text (Hit/Miss/Validation) shown under boards
-
-while hits < num_ships:
-    # Refresh the view at the start of each turn
+while player_ships and enemy_ships:
     clear_screen()
-
-    # Header + boards
     print("===================================")
-    print(Style.BRIGHT + Fore.MAGENTA + " 🚢 Battleship — Solo Mode (Prep for Versus)" + Style.RESET_ALL)
+    print(Style.BRIGHT + Fore.MAGENTA + " 🚢 Battleship — Alternating Turns " + Style.RESET_ALL)
     print("===================================\n")
-    display_game_boards(enemy_view, player_board)
 
-    # Show the last action/result under the boards (if any)
-    if last_message:
-        print("\n" + last_message)
+    display_boards(enemy_view, player_board)
+    if player_msg:
+        print("\n" + player_msg)
+    if enemy_msg:
+        print(enemy_msg)
 
-    # Ask for the next guess (A1..H8 or Q)
+    # --- user input ---
     guess = input("\nEnter position (e.g., A1) or Q to quit: ").strip().upper()
-
-    # Quit option
     if guess == "Q":
         clear_screen()
-        print("👋 You quit the game. Bye!")
+        print("👋 Game ended by user.")
         break
 
-    # Basic format validation: need at least 2 chars (e.g., 'A1')
+    # quick validation before converting to row/col indexes
     if len(guess) < 2:
-        last_message = Fore.YELLOW + "❌ Please type a letter followed by a number, e.g., A1." + Style.RESET_ALL
+        player_msg = "❌ Format must be a letter followed by a number, e.g., A1."
         continue
 
-    row_letter = guess[0]
-    digits = guess[1:]  # the numeric part (1..board_size as text)
-
-    # Validate row letter is within A..(A + board_size - 1)
-    if not ("A" <= row_letter <= chr(65 + board_size - 1)):
-        last_message = Fore.YELLOW + f"❌ Row must be between A and {chr(65 + board_size - 1)}." + Style.RESET_ALL
+    row_letter, digits = guess[0], guess[1:]
+    if not ("A" <= row_letter <= chr(65 + BOARD_SIZE - 1)):
+        player_msg = f"❌ Row must be A–{chr(65 + BOARD_SIZE - 1)}."
         continue
-
-    # Validate column is numeric and within 1..board_size
     if not digits.isdigit():
-        last_message = Fore.YELLOW + "❌ Column must be a number, e.g., A1 or B8." + Style.RESET_ALL
+        player_msg = "❌ Column must be a number, e.g., A1 or B8."
         continue
 
-    # Convert to int, but remember the display is 1-based (so we subtract 1)
-    col_1based = int(digits)
-    if not (1 <= col_1based <= board_size):
-        last_message = Fore.YELLOW + f"❌ Column out of range. Use 1–{board_size}." + Style.RESET_ALL
+    col1 = int(digits)
+    if not (1 <= col1 <= BOARD_SIZE):
+        player_msg = f"❌ Column out of range. Use 1–{BOARD_SIZE}."
         continue
 
-    # Convert to zero-based column index for internal board access
-    col = col_1based - 1
+    # convert A..H / 1..8 into 0..7 indexes
+    r = ord(row_letter) - 65
+    c = col1 - 1
 
-    # Convert row letter to zero-based row index (A→0, B→1, ...)
-    row = ord(row_letter) - 65
-
-    # Prevent shooting the same enemy cell twice
-    if enemy_view[row][col] in ("O", "X"):
-        last_message = Fore.YELLOW + "⚠️ You already tried that spot. Pick another." + Style.RESET_ALL
+    # block repeated guesses
+    if enemy_view[r][c] in (MISS, HIT):
+        player_msg = "⚠️ That position was already tried."
         continue
 
-    # Resolve hit or miss against enemy ships
-    if (row, col) in enemy_ships:
-        enemy_view[row][col] = "X"
-        hits += 1
-        enemy_ships.remove((row, col))
-        last_message = Style.BRIGHT + Fore.RED + f"🎯 HIT at {row_letter}{col_1based}! Enemy ship damaged! 🚢🔥" + Style.RESET_ALL
+    # apply shot
+    if (r, c) in enemy_ships:
+        enemy_view[r][c] = HIT
+        enemy_ships.remove((r, c))
+        player_msg = f"🎯 HIT at {row_letter}{col1}! {HIT}"
     else:
-        enemy_view[row][col] = "O"
-        last_message = Fore.BLUE + f"💦 MISS at {row_letter}{col_1based}. Nothing there." + Style.RESET_ALL
+        enemy_view[r][c] = MISS
+        player_msg = f"💦 MISS at {row_letter}{col1}. {MISS}"
 
+    # win check (user sank every enemy ship)
+    if not enemy_ships:
+        break
 
-# -------------------------------
-# Step 7: End of Game
-# -------------------------------
-if hits == num_ships:
+    # enemy turn
+    enemy_msg = enemy_take_one_shot(player_board, player_ships, enemy_tried)
+    # loss check (enemy sank every player ship)
+    if not player_ships:
+        break
+
+# ========= 10) End screen =========
+if enemy_ships and not player_ships:
     clear_screen()
     print("===================================")
-    print(Style.BRIGHT + Fore.MAGENTA + " 🚢 Battleship — Solo Mode (Prep for Versus)" + Style.RESET_ALL)
+    print(Style.BRIGHT + Fore.MAGENTA + " 🚢 Battleship — Game Over" + Style.RESET_ALL)
     print("===================================\n")
-    display_game_boards(enemy_view, player_board)
-    print("\n" + Style.BRIGHT + Fore.GREEN + "🏆 Congratulations, YOU WIN! All enemy ships are sunk! 🎮" + Style.RESET_ALL)
+    display_boards(enemy_view, player_board)
+    print("\n💀 All player ships are sunk.")
+elif player_ships and not enemy_ships:
+    clear_screen()
+    print("===================================")
+    print(Style.BRIGHT + Fore.MAGENTA + " 🚢 Battleship — Victory!" + Style.RESET_ALL)
+    print("===================================\n")
+    display_boards(enemy_view, player_board)
+    print("\n🏆 All enemy ships are sunk! 🎉")
