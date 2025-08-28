@@ -9,7 +9,6 @@
 # - Emoji can be double-width, so wcwidth is used for alignment.
 # - Boards are always printed side-by-side (no responsive/stacked mode).
 # - Boards are framed with box-drawing characters; titles are centered.
-
 # ========= 1) Imports =========
 import os
 import re
@@ -20,7 +19,7 @@ from wcwidth import wcswidth  # measures on-screen width so emoji align
 # Configure color handling (safe on Windows)
 init(autoreset=True)
 
-# ========= 2) Constants (symbols, labels, layout) =========
+# ========= 2) Constants =========
 WATER = "🌊"        # unknown water
 MISS = "💦"         # shot that missed
 HIT = "💥"          # shot that hit
@@ -93,7 +92,6 @@ def horizontal_bar(inner_width: int) -> str:
     return BL + (H * inner_width) + BR
 
 
-# ========= 6) Cell + board rendering =========
 def format_cell(symbol: str) -> str:
     """Return one cell padded to CELL_VISUAL columns."""
     return pad_visual(symbol, CELL_VISUAL)
@@ -136,61 +134,7 @@ def display_boards(enemy_view: list[list[str]],
         print(lft + GAP_BETWEEN_BOARDS + rgt)
 
 
-# ========= 7) Enemy AI =========
-def enemy_take_one_shot(player_board, player_ships, tried):
-    """
-    Fire one random shot at the player board.
-
-    - Avoid repeating positions using `tried`.
-    - Mark 💥 or 💦 on the player board.
-    - Remove a ship position on hit.
-
-    Returns a short status message.
-    """
-    global total_enemy_shots
-
-    while True:
-        r = random.randint(0, BOARD_SIZE - 1)
-        c = random.randint(0, BOARD_SIZE - 1)
-        if (r, c) in tried or player_board[r][c] in (MISS, HIT):
-            tried.add((r, c))
-            continue
-        tried.add((r, c))
-        break
-
-    pos = f"{chr(65 + r)}{c + 1}"
-    total_enemy_shots += 1
-    if (r, c) in player_ships:
-        player_board[r][c] = HIT
-        player_ships.remove((r, c))
-        return f"👾 Enemy fires at {pos} — {HIT} Hit!"
-    player_board[r][c] = MISS
-    return f"👾 Enemy fires at {pos} — {MISS} Miss."
-
-
-# ========= 8) Game state =========
-enemy_view = [[WATER] * BOARD_SIZE for _ in range(BOARD_SIZE)]
-player_board = [[WATER] * BOARD_SIZE for _ in range(BOARD_SIZE)]
-
-NUM_SHIPS = 3
-
-enemy_ships = set()
-while len(enemy_ships) < NUM_SHIPS:
-    enemy_ships.add(
-        (random.randint(0, BOARD_SIZE - 1),
-         random.randint(0, BOARD_SIZE - 1))
-    )
-
-player_ships = set()
-while len(player_ships) < NUM_SHIPS:
-    r = random.randint(0, BOARD_SIZE - 1)
-    c = random.randint(0, BOARD_SIZE - 1)
-    if (r, c) not in player_ships:
-        player_ships.add((r, c))
-        player_board[r][c] = SHIP_CHAR
-
-
-# ========= 8A) Welcome screen =========
+# ========= 6) Welcome screen UI =========
 def ascii_command_title():
     """Big header that feels like a command console."""
     print(Style.BRIGHT + Fore.CYAN + "═" * 80 + Style.RESET_ALL)
@@ -282,127 +226,169 @@ def show_welcome_screen():
     clear_screen()
 
 
-# ========= 9) Intro screen =========
-show_welcome_screen()
+# ========= 7) BattleshipGame Class =========
+class BattleshipGame:
+    """Main Battleship game class: manages state, turns, and game loop."""
 
-# ========= 10) Main loop =========
-player_msg = ""          # last message from player shot
-enemy_msg = ""           # last message from enemy shot
-enemy_tried = set()      # coordinates already attempted by enemy
-total_player_shots = 0
-total_enemy_shots = 0
+    def __init__(self, size=8, num_ships=3):
+        """Initialize game with boards, ship placement, and stats."""
+        self.size = size
+        self.num_ships = num_ships
 
-while player_ships and enemy_ships:
-    clear_screen()
-    print("===================================")
-    print(
-        Style.BRIGHT + Fore.MAGENTA
-        + " 🚢 Battleship — Alternating Turns "
-        + Style.RESET_ALL
-    )
-    print("===================================\n")
+        # Boards
+        self.enemy_view = [[WATER] * size for _ in range(size)]
+        self.player_board = [[WATER] * size for _ in range(size)]
 
-    display_boards(enemy_view, player_board)
+        # Ship placement
+        self.enemy_ships = self._place_ships()
+        self.player_ships = self._place_ships(reveal=True)
 
-    legend = (
-        f"{HIT}=Hit  {MISS}=Miss  {WATER}=Water  {SHIP_CHAR}=Player ship"
-    )
-    enemy_left = len(enemy_ships)
-    player_left = len(player_ships)
-    enemy_bar = " ".join([SHIP_CHAR] * enemy_left) if enemy_left else "—"
-    player_bar = " ".join([SHIP_CHAR] * player_left) if player_left else "—"
+        # Stats and tracking
+        self.enemy_tried = set()
+        self.total_player_shots = 0
+        self.total_enemy_shots = 0
+        self.player_msg = ""
+        self.enemy_msg = ""
 
-    print("\n" + strong_white("Legend: ") + legend)
-    print(
-        strong_white("Status: ")
-        + f"Enemy ships: {enemy_left} [{enemy_bar}]   "
-        + f"Player ships: {player_left} [{player_bar}]   "
-        + f"Shots — Player: {total_player_shots}  "
-        + f"Enemy: {total_enemy_shots}"
-    )
+    def _place_ships(self, reveal=False):
+        """Randomly place ships; reveal=True shows ships on player board."""
+        ships = set()
+        while len(ships) < self.num_ships:
+            r = random.randint(0, self.size - 1)
+            c = random.randint(0, self.size - 1)
+            ships.add((r, c))
+        if reveal:
+            for r, c in ships:
+                self.player_board[r][c] = SHIP_CHAR
+        return ships
 
-    if player_msg:
-        print("\n" + player_msg)
-    if enemy_msg:
-        print(enemy_msg)
+    def play(self):
+        """Main game loop: show welcome screen, alternate turns."""
+        show_welcome_screen()
+        while self.player_ships and self.enemy_ships:
+            self._play_turn()
+        self._end_screen()
 
-    # --- Player turn ---
-    print("\n" + strong_yellow("— Player Turn —"))
-    guess = input("Enter position (e.g., A1) or Q to quit: ").strip().upper()
-    if guess == "Q":
+    def _play_turn(self):
+        """Handle one full round: player fires, then enemy fires."""
         clear_screen()
-        print("👋 Game ended by user.")
-        break
+        print("===================================")
+        print(Style.BRIGHT + Fore.MAGENTA +
+              " 🚢 Battleship — Alternating Turns " +
+              Style.RESET_ALL)
+        print("===================================\n")
 
-    if len(guess) < 2:
-        player_msg = (
-            "❌ Format must be a letter followed by a number, e.g., A1."
+        display_boards(self.enemy_view, self.player_board)
+        self._show_status()
+
+        # Player's turn
+        self._player_turn()
+        if not self.enemy_ships:
+            return
+
+        # Enemy's turn
+        self.enemy_msg = (strong_yellow("— Enemy Turn —") + "\n" +
+                          self._enemy_turn())
+
+    def _player_turn(self):
+        """Get player input, validate, and fire a shot."""
+        guess = input("\nEnter position (e.g., A1) or Q to quit: "
+                      ).strip().upper()
+        if guess == "Q":
+            clear_screen()
+            print("👋 Game ended by user.")
+            exit()
+
+        # Validate input
+        if len(guess) < 2:
+            self.player_msg = "❌ Format must be Letter+Number, e.g., A1."
+            return
+
+        row_letter, digits = guess[0], guess[1:]
+        if not ("A" <= row_letter <= chr(65 + self.size - 1)):
+            self.player_msg = f"❌ Row must be A–{chr(65 + self.size - 1)}."
+            return
+        if not digits.isdigit():
+            self.player_msg = "❌ Column must be a number, e.g., A1."
+            return
+
+        col1 = int(digits)
+        if not (1 <= col1 <= self.size):
+            self.player_msg = f"❌ Column out of range. Use 1–{self.size}."
+            return
+
+        r = ord(row_letter) - 65
+        c = col1 - 1
+
+        if self.enemy_view[r][c] in (MISS, HIT):
+            self.player_msg = "⚠️ That position was already tried."
+            return
+
+        # Fire shot
+        self.total_player_shots += 1
+        if (r, c) in self.enemy_ships:
+            self.enemy_view[r][c] = HIT
+            self.enemy_ships.remove((r, c))
+            self.player_msg = f"🎯 HIT at {row_letter}{col1}! {HIT}"
+        else:
+            self.enemy_view[r][c] = MISS
+            self.player_msg = f"💦 MISS at {row_letter}{col1}. {MISS}"
+
+    def _enemy_turn(self):
+        """Enemy fires one random valid shot at the player."""
+        while True:
+            r = random.randint(0, self.size - 1)
+            c = random.randint(0, self.size - 1)
+            if (r, c) in self.enemy_tried:
+                continue
+            self.enemy_tried.add((r, c))
+            break
+
+        pos = f"{chr(65 + r)}{c + 1}"
+        self.total_enemy_shots += 1
+
+        if (r, c) in self.player_ships:
+            self.player_board[r][c] = HIT
+            self.player_ships.remove((r, c))
+            return f"👾 Enemy fires at {pos} — {HIT} Hit!"
+        self.player_board[r][c] = MISS
+        return f"👾 Enemy fires at {pos} — {MISS} Miss."
+
+    def _show_status(self):
+        """Display legend, ship counts, and last turn results."""
+        legend = (f"{HIT}=Hit  {MISS}=Miss  {WATER}=Water  "
+                  f"{SHIP_CHAR}=Player ship")
+        enemy_left = len(self.enemy_ships)
+        player_left = len(self.player_ships)
+        enemy_bar = " ".join([SHIP_CHAR] * enemy_left) if enemy_left else "—"
+        player_bar = (
+            " ".join([SHIP_CHAR] * player_left) if player_left else "—"
         )
-        continue
 
-    row_letter, digits = guess[0], guess[1:]
-    if not ("A" <= row_letter <= chr(65 + BOARD_SIZE - 1)):
-        player_msg = f"❌ Row must be A–{chr(65 + BOARD_SIZE - 1)}."
-        continue
-    if not digits.isdigit():
-        player_msg = "❌ Column must be a number, e.g., A1 or B8."
-        continue
+        print("\n" + strong_white("Legend: ") + legend)
+        print(
+            strong_white("Status: ")
+            + f"Enemy ships: {enemy_left} [{enemy_bar}]   "
+            + f"Player ships: {player_left} [{player_bar}]   "
+            + f"Shots — Player: {self.total_player_shots}  "
+            + f"Enemy: {self.total_enemy_shots}"
+        )
 
-    col1 = int(digits)
-    if not (1 <= col1 <= BOARD_SIZE):
-        player_msg = f"❌ Column out of range. Use 1–{BOARD_SIZE}."
-        continue
+        if self.player_msg:
+            print("\n" + self.player_msg)
+        if self.enemy_msg:
+            print(self.enemy_msg)
 
-    r = ord(row_letter) - 65
-    c = col1 - 1
-
-    if enemy_view[r][c] in (MISS, HIT):
-        player_msg = "⚠️ That position was already tried."
-        continue
-
-    total_player_shots += 1
-    if (r, c) in enemy_ships:
-        enemy_view[r][c] = HIT
-        enemy_ships.remove((r, c))
-        player_msg = f"🎯 HIT at {row_letter}{col1}! {HIT}"
-    else:
-        enemy_view[r][c] = MISS
-        player_msg = f"💦 MISS at {row_letter}{col1}. {MISS}"
-
-    if not enemy_ships:
-        break
-
-    # --- Enemy turn ---
-    enemy_msg = (
-        strong_yellow("— Enemy Turn —") + "\n"
-        + enemy_take_one_shot(player_board, player_ships, enemy_tried)
-    )
-
-    if not player_ships:
-        break
+    def _end_screen(self):
+        """Display victory or defeat."""
+        clear_screen()
+        if self.enemy_ships and not self.player_ships:
+            print("💀 Game Over: All player ships sunk.")
+        elif self.player_ships and not self.enemy_ships:
+            print("🏆 Victory: All enemy ships sunk! 🎉")
 
 
-# ========= 11) End screen =========
-if enemy_ships and not player_ships:
-    clear_screen()
-    print("===================================")
-    print(
-        Style.BRIGHT + Fore.MAGENTA
-        + " 🚢 Battleship — Game Over"
-        + Style.RESET_ALL
-    )
-    print("===================================\n")
-    display_boards(enemy_view, player_board)
-    print("\n💀 All player ships are sunk.")
-
-elif player_ships and not enemy_ships:
-    clear_screen()
-    print("===================================")
-    print(
-        Style.BRIGHT + Fore.MAGENTA
-        + " 🚢 Battleship — Victory!"
-        + Style.RESET_ALL
-    )
-    print("===================================\n")
-    display_boards(enemy_view, player_board)
-    print("\n🏆 All enemy ships are sunk! 🎉")
+# ========= 8) Run Game =========
+if __name__ == "__main__":
+    game = BattleshipGame()
+    game.play()
