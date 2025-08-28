@@ -9,6 +9,7 @@
 # - Emoji can be double-width, so wcwidth is used for alignment.
 # - Boards are always printed side-by-side (no responsive/stacked mode).
 # - Boards are framed with box-drawing characters; titles are centered.
+
 # ========= 1) Imports =========
 import os
 import re
@@ -95,43 +96,6 @@ def horizontal_bar(inner_width: int) -> str:
 def format_cell(symbol: str) -> str:
     """Return one cell padded to CELL_VISUAL columns."""
     return pad_visual(symbol, CELL_VISUAL)
-
-
-def build_board_block(title_text: str,
-                      grid_rows: list[list[str]]) -> list[str]:
-    """
-    Build a single framed board (title + header + rows + bottom).
-
-    Returns a list of text lines representing that board.
-    """
-    inner_width = 3 + (BOARD_SIZE * CELL_VISUAL)
-    lines = []
-
-    lines.append(title_bar(title_text, inner_width))
-
-    nums = "".join(format_cell(str(i)) for i in range(1, BOARD_SIZE + 1))
-    header = "   " + nums
-    lines.append(V + strong_white(header) + V)
-
-    for r in range(BOARD_SIZE):
-        row_label = strong_white(chr(65 + r))
-        row_cells = "".join(format_cell(ch) for ch in grid_rows[r])
-        content = f"{row_label}  {row_cells}"
-        content = pad_visual(content, inner_width)
-        lines.append(V + content + V)
-
-    lines.append(horizontal_bar(inner_width))
-    return lines
-
-
-def display_boards(enemy_view: list[list[str]],
-                   player_board: list[list[str]]) -> None:
-    """Print both framed boards side-by-side (fixed layout)."""
-    left_block = build_board_block(LEFT_TITLE, enemy_view)
-    right_block = build_board_block(RIGHT_TITLE, player_board)
-
-    for lft, rgt in zip(left_block, right_block):
-        print(lft + GAP_BETWEEN_BOARDS + rgt)
 
 
 # ========= 6) Welcome screen UI =========
@@ -230,25 +194,46 @@ def show_welcome_screen():
 class BattleshipGame:
     """Main Battleship game class: manages state, turns, and game loop."""
 
-    def __init__(self, size=8, num_ships=3):
-        """Initialize game with boards, ship placement, and stats."""
-        self.size = size
-        self.num_ships = num_ships
+    def __init__(self):
+        """Ask user for grid size and ship count, then set up game."""
+        self.size = self.get_grid_size()
+        self.num_ships = self.get_ship_count()
 
         # Boards
-        self.enemy_view = [[WATER] * size for _ in range(size)]
-        self.player_board = [[WATER] * size for _ in range(size)]
+        self.enemy_view = [[WATER] * self.size for _ in range(self.size)]
+        self.player_board = [[WATER] * self.size for _ in range(self.size)]
 
-        # Ship placement
+        # Ships
         self.enemy_ships = self._place_ships()
         self.player_ships = self._place_ships(reveal=True)
 
-        # Stats and tracking
+        # Stats
         self.enemy_tried = set()
         self.total_player_shots = 0
         self.total_enemy_shots = 0
         self.player_msg = ""
         self.enemy_msg = ""
+
+    # ---------------- Input setup ----------------
+    def get_grid_size(self):
+        """Ask user for grid size, default 8, validate input."""
+        while True:
+            choice = input("Enter grid size (default 8): ").strip()
+            if not choice:
+                return 8
+            if choice.isdigit() and 4 <= int(choice) <= 15:
+                return int(choice)
+            print("❌ Please enter a number between 4 and 15.")
+
+    def get_ship_count(self):
+        """Ask user for number of ships, default 3, validate input."""
+        while True:
+            choice = input("Enter number of ships (default 3): ").strip()
+            if not choice:
+                return 3
+            if choice.isdigit() and 1 <= int(choice) <= (self.size // 2):
+                return int(choice)
+            print(f"❌ Please enter a number between 1 and {self.size // 2}.")
 
     def _place_ships(self, reveal=False):
         """Randomly place ships; reveal=True shows ships on player board."""
@@ -262,6 +247,7 @@ class BattleshipGame:
                 self.player_board[r][c] = SHIP_CHAR
         return ships
 
+    # ---------------- Gameplay ----------------
     def play(self):
         """Main game loop: show welcome screen, alternate turns."""
         show_welcome_screen()
@@ -273,12 +259,14 @@ class BattleshipGame:
         """Handle one full round: player fires, then enemy fires."""
         clear_screen()
         print("===================================")
-        print(Style.BRIGHT + Fore.MAGENTA +
-              " 🚢 Battleship — Alternating Turns " +
-              Style.RESET_ALL)
+        print(
+            Style.BRIGHT + Fore.MAGENTA
+            + " 🚢 Battleship — Alternating Turns "
+            + Style.RESET_ALL
+        )
         print("===================================\n")
 
-        display_boards(self.enemy_view, self.player_board)
+        self.display_boards()
         self._show_status()
 
         # Player's turn
@@ -287,26 +275,32 @@ class BattleshipGame:
             return
 
         # Enemy's turn
-        self.enemy_msg = (strong_yellow("— Enemy Turn —") + "\n" +
-                          self._enemy_turn())
+        self.enemy_msg = (
+            strong_yellow("— Enemy Turn —") + "\n"
+            + self._enemy_turn()
+        )
 
     def _player_turn(self):
         """Get player input, validate, and fire a shot."""
-        guess = input("\nEnter position (e.g., A1) or Q to quit: "
-                      ).strip().upper()
+        guess = input(
+            "\nEnter position (e.g., A1) or Q to quit: "
+        ).strip().upper()
         if guess == "Q":
             clear_screen()
             print("👋 Game ended by user.")
             exit()
 
-        # Validate input
         if len(guess) < 2:
-            self.player_msg = "❌ Format must be Letter+Number, e.g., A1."
+            self.player_msg = (
+                "❌ Format must be Letter+Number, e.g., A1."
+            )
             return
 
         row_letter, digits = guess[0], guess[1:]
         if not ("A" <= row_letter <= chr(65 + self.size - 1)):
-            self.player_msg = f"❌ Row must be A–{chr(65 + self.size - 1)}."
+            self.player_msg = (
+                f"❌ Row must be A–{chr(65 + self.size - 1)}."
+            )
             return
         if not digits.isdigit():
             self.player_msg = "❌ Column must be a number, e.g., A1."
@@ -314,7 +308,9 @@ class BattleshipGame:
 
         col1 = int(digits)
         if not (1 <= col1 <= self.size):
-            self.player_msg = f"❌ Column out of range. Use 1–{self.size}."
+            self.player_msg = (
+                f"❌ Column out of range. Use 1–{self.size}."
+            )
             return
 
         r = ord(row_letter) - 65
@@ -324,7 +320,6 @@ class BattleshipGame:
             self.player_msg = "⚠️ That position was already tried."
             return
 
-        # Fire shot
         self.total_player_shots += 1
         if (r, c) in self.enemy_ships:
             self.enemy_view[r][c] = HIT
@@ -356,8 +351,10 @@ class BattleshipGame:
 
     def _show_status(self):
         """Display legend, ship counts, and last turn results."""
-        legend = (f"{HIT}=Hit  {MISS}=Miss  {WATER}=Water  "
-                  f"{SHIP_CHAR}=Player ship")
+        legend = (
+            f"{HIT}=Hit  {MISS}=Miss  {WATER}=Water  "
+            f"{SHIP_CHAR}=Player ship"
+        )
         enemy_left = len(self.enemy_ships)
         player_left = len(self.player_ships)
         enemy_bar = " ".join([SHIP_CHAR] * enemy_left) if enemy_left else "—"
@@ -386,6 +383,42 @@ class BattleshipGame:
             print("💀 Game Over: All player ships sunk.")
         elif self.player_ships and not self.enemy_ships:
             print("🏆 Victory: All enemy ships sunk! 🎉")
+
+    # ---------------- Board rendering ----------------
+    def build_board_block(self, title_text: str, grid_rows: list[list[str]]):
+        """Build a single framed board (title + header + rows + bottom)."""
+        inner_width = 3 + (self.size * CELL_VISUAL)
+        lines = []
+
+        lines.append(title_bar(title_text, inner_width))
+
+        nums = "".join(
+            format_cell(str(i)) for i in range(1, self.size + 1)
+        )
+        header = "   " + nums
+        lines.append(V + strong_white(header) + V)
+
+        for r in range(self.size):
+            row_label = strong_white(chr(65 + r))
+            row_cells = "".join(format_cell(ch) for ch in grid_rows[r])
+            content = f"{row_label}  {row_cells}"
+            content = pad_visual(content, inner_width)
+            lines.append(V + content + V)
+
+        lines.append(horizontal_bar(inner_width))
+        return lines
+
+    def display_boards(self):
+        """Print both framed boards side-by-side (fixed layout)."""
+        left_block = self.build_board_block(
+            LEFT_TITLE, self.enemy_view
+        )
+        right_block = self.build_board_block(
+            RIGHT_TITLE, self.player_board
+        )
+
+        for lft, rgt in zip(left_block, right_block):
+            print(lft + GAP_BETWEEN_BOARDS + rgt)
 
 
 # ========= 8) Run Game =========
