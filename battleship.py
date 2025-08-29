@@ -14,6 +14,7 @@
 import os
 import re
 import random
+from typing import List
 from colorama import init, Fore, Style
 from wcwidth import wcswidth  # measures on-screen width so emoji align
 
@@ -29,7 +30,6 @@ SHIP_CHAR = "🚢"    # player ship (visible on right board)
 LEFT_TITLE = "Enemy Fleet"
 RIGHT_TITLE = "Your Fleet"
 
-BOARD_SIZE = 8                 # rows A–H, columns 1–8
 CELL_VISUAL = 3                # visible width of one cell slot
 GAP_BETWEEN_BOARDS = " " * 8   # spaces between framed boards
 
@@ -281,56 +281,65 @@ class BattleshipGame:
         )
 
     def _player_turn(self):
-        """Get player input, validate, and fire a shot."""
-        guess = input(
-            "\nEnter position (e.g., A1) or Q to quit: "
-        ).strip().upper()
-        if guess == "Q":
-            clear_screen()
-            print("👋 Game ended by user.")
-            exit()
+        """Get player input, validate, and fire a shot (defensive design)."""
+        try:
+            guess = input(
+                "\nEnter position (e.g., A1) or Q to quit: "
+            ).strip().upper()
+            if guess == "Q":
+                clear_screen()
+                print("👋 Game ended by user.")
+                exit()
 
-        if len(guess) < 2:
+            if len(guess) < 2:
+                self.player_msg = (
+                    "❌ Format must be Letter+Number, e.g., A1."
+                )
+                return
+
+            row_letter, digits = guess[0], guess[1:]
+            if not ("A" <= row_letter <= chr(65 + self.size - 1)):
+                self.player_msg = (
+                    f"❌ Row must be A–{chr(65 + self.size - 1)}."
+                )
+                return
+            if not digits.isdigit():
+                self.player_msg = "❌ Column must be a number, e.g., A1."
+                return
+
+            col1 = int(digits)
+            if not (1 <= col1 <= self.size):
+                self.player_msg = (
+                    f"❌ Column out of range. Use 1–{self.size}."
+                )
+                return
+
+            r = ord(row_letter) - 65
+            c = col1 - 1
+
+            if self.enemy_view[r][c] in (MISS, HIT):
+                self.player_msg = "⚠️ That position was already tried."
+                return
+
+            # Fire shot
+            self.total_player_shots += 1
+            if (r, c) in self.enemy_ships:
+                self.enemy_view[r][c] = HIT
+                self.enemy_ships.remove((r, c))
+                self.player_msg = f"🎯 HIT at {row_letter}{col1}! {HIT}"
+            else:
+                self.enemy_view[r][c] = MISS
+                self.player_msg = f"💦 MISS at {row_letter}{col1}. {MISS}"
+
+        except Exception:
+            # Catch any unexpected error so user isn’t thrown out of game
             self.player_msg = (
-                "❌ Format must be Letter+Number, e.g., A1."
+                "⚠️ Invalid input. Try again (format: Letter+Number, e.g., A1)."
             )
-            return
-
-        row_letter, digits = guess[0], guess[1:]
-        if not ("A" <= row_letter <= chr(65 + self.size - 1)):
-            self.player_msg = (
-                f"❌ Row must be A–{chr(65 + self.size - 1)}."
-            )
-            return
-        if not digits.isdigit():
-            self.player_msg = "❌ Column must be a number, e.g., A1."
-            return
-
-        col1 = int(digits)
-        if not (1 <= col1 <= self.size):
-            self.player_msg = (
-                f"❌ Column out of range. Use 1–{self.size}."
-            )
-            return
-
-        r = ord(row_letter) - 65
-        c = col1 - 1
-
-        if self.enemy_view[r][c] in (MISS, HIT):
-            self.player_msg = "⚠️ That position was already tried."
-            return
-
-        self.total_player_shots += 1
-        if (r, c) in self.enemy_ships:
-            self.enemy_view[r][c] = HIT
-            self.enemy_ships.remove((r, c))
-            self.player_msg = f"🎯 HIT at {row_letter}{col1}! {HIT}"
-        else:
-            self.enemy_view[r][c] = MISS
-            self.player_msg = f"💦 MISS at {row_letter}{col1}. {MISS}"
 
     def _enemy_turn(self):
         """Enemy fires one random valid shot at the player."""
+        # Keep choosing random cells until one is unused
         while True:
             r = random.randint(0, self.size - 1)
             c = random.randint(0, self.size - 1)
@@ -385,19 +394,21 @@ class BattleshipGame:
             print("🏆 Victory: All enemy ships sunk! 🎉")
 
     # ---------------- Board rendering ----------------
-    def build_board_block(self, title_text: str, grid_rows: list[list[str]]):
+    def build_board_block(self, title_text: str, grid_rows: List[List[str]]):
         """Build a single framed board (title + header + rows + bottom)."""
         inner_width = 3 + (self.size * CELL_VISUAL)
         lines = []
 
         lines.append(title_bar(title_text, inner_width))
 
+        # Column numbers
         nums = "".join(
             format_cell(str(i)) for i in range(1, self.size + 1)
         )
         header = "   " + nums
         lines.append(V + strong_white(header) + V)
 
+        # Rows (A, B, C…)
         for r in range(self.size):
             row_label = strong_white(chr(65 + r))
             row_cells = "".join(format_cell(ch) for ch in grid_rows[r])
