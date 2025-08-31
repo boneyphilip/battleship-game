@@ -1,221 +1,176 @@
-🚢 Battleship Game (Python Terminal Edition)
+<pre align="center">
 
-This is a Python-based command-line Battleship game where the user plays against the computer (enemy).
-The game uses an emoji-based grid display and runs in alternating turns until one side’s fleet is completely destroyed.
+██████   █████  ████████ ████████ ██      ███████ ███████ ██   ██ ██ ██████  ███████ 
+██   ██ ██   ██    ██       ██    ██      ██      ██      ██   ██ ██ ██   ██ ██      
+██████  ███████    ██       ██    ██      █████   ███████ ███████ ██ ██████  ███████ 
+██   ██ ██   ██    ██       ██    ██      ██           ██ ██   ██ ██ ██           ██ 
+██████  ██   ██    ██       ██    ███████ ███████ ███████ ██   ██ ██ ██      ███████ 
+                                                                                     
+                                                                                      
 
-The project was developed as part of the Python Essentials Portfolio Project (Full Stack Software Development Diploma).
-It demonstrates fundamental Python programming skills: loops, conditionals, functions, data structures, error handling, and external library usage.
 
-🎯 Project Purpose
 
-User Goal: To play a fun, logic-based Battleship game in the terminal, with clear feedback and a visually engaging grid system.
+*Battleships Game – Python Terminal Edition*  
 
-Developer Goal: To design and implement a working Python application that demonstrates programming constructs, input validation, data handling, version control, and documentation.
+⣠⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠰⠶⢿⡶⠦⠄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⢀⣀⣿⣿⣿⣿⣿⣿⡇⢀⠀⢀⡀⠀⣀⣀⣠⣀⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠉⠻⠿⣿⣿⣿⣿⣿⣶⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣽⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣶⣿⣿⣶⣶⣾⣧⣤⣴⣆⣀⢀⣤⡄⠀⠀⣀⡀⠀
 
-🛠️ Features
-✅ Core Features
+</pre>
 
-Two boards displayed side by side:
+---
 
-Enemy Fleet → shows only what the user discovers (hits 💥 and misses 💦).
+## Battleships Game – Python Terminal Edition
 
-Your Fleet → shows the user’s own ships (🚢), hits, and misses.
+This is a **Python-based Battleships game** built for the terminal.  
+The player battles against the computer with alternating turns until one fleet is destroyed.  
 
-Alternating turns: The user takes a shot, then the enemy takes one.
+This project was developed as part of the **Python Essentials Portfolio Project** (Full Stack Software Development Diploma).  
+It demonstrates core Python skills: loops, functions, lists, input validation, error handling, and use of external libraries.
 
-Random ship placement for both fleets, ensuring replayability.
+---
 
-Emoji-based grid symbols for better visuals:
+## 🎯 Project Purpose
 
-🌊 = Water (unknown)
+- **User Goal**: Play a fun, logic-based Battleships game with interactive feedback.  
+- **Developer Goal**: Implement a Python project showing clear logic, error handling, and visual engagement in the terminal.  
 
-💦 = Miss
+---
 
-💥 = Hit
+## 🛠️ Features
 
-🚢 = User ship (visible only on the right board)
+### Core Features
+- Two side-by-side boards:
+  - **Enemy Fleet** → shows only discovered hits 💥 and misses 💦  
+  - **Your Fleet** → shows your ships 🚢 plus hits & misses  
+- Turn-based play: player and computer alternate shots.  
+- Random ship placement for replayability.  
+- Input validation prevents invalid or repeated guesses.  
+- Victory / defeat messages when the game ends.  
 
-Input validation:
+### Visual Enhancements
+- **Color-coded feedback** with `colorama`:  
+  - Hits → Red 💥  
+  - Misses → Blue 💦  
+  - Fleet names → Yellow  
+- **Emoji-based grid display** with `wcwidth` for alignment.  
+- **Mission briefing screen** with typing effect.  
+- **ASCII Battleship art and gradient title** on welcome screen.  
 
-Rejects invalid inputs (e.g., "Z9", "11A").
+---
 
-Warns if a guess is repeated.
+## 📖 How to Play
 
-Prevents firing outside the grid.
+1. Clone the repository:  
+   ```bash
+   git clone https://github.com/boneyphilip/battleship-game.git
+   cd battleship-game
 
-Clear game messages:
+2. Install dependencies:
 
-Feedback after every turn (hit/miss).
+   pip install -r requirements.txt
 
-Victory/defeat message when game ends.
 
-Quit option by typing Q.
+3. Run the game:
 
-🌟 Extra Features
+   python3 battleship.py
 
-Centered titles above each board: Enemy Fleet and Your Fleet.
+--------------------------------------------------------------------------
+   📸 Screenshots
 
-Aligned grid display even when using emojis, by handling visual widths (wcwidth).
+👉 (Replace these placeholders with actual images from your game output)
 
-Color-coded messages using colorama:
+- Welcome Screen
+  
+   ![Welcome Screen](docs/images/welcome.png)
 
-Hits (💥) in red.
+- Mission Briefing
 
-Misses (💦) in blue.
+  ![Mission Briefing](docs/images/briefing.png)
 
-Titles in yellow.
+- Game Board Example
 
-Row/column labels in white.
+  ![Game Board](docs/images/board.png)
 
-Replayability: Ships are hidden in random positions each run.
+------------------------------------------------------------------------
 
-🧰 Technologies Used
+  🧪 Testing & Validation
 
-Python 3 — core programming language.
+- Input validation tested:
 
-colorama
- — provides colored terminal output across platforms.
+   - Invalid coordinates (e.g., Z5, 11A) rejected.
 
-wcwidth
- — ensures emoji symbols align correctly in grids by measuring visual width.
+   - Repeated guesses flagged.
 
-Git & GitHub — version control and project management.
+   - Out-of-range inputs blocked.
 
-▶️ How to Run the Project
-1. Clone the repository
-git clone https://github.com/boneyphilip/battleship-game.git
-cd battleship-game
+- Gameplay tested:
 
-2. Install dependencies
+  - Both win and loss conditions verified.
 
-Make sure Python 3 is installed. Then run:
+  - Ships placed randomly each run.
 
-pip install -r requirements.txt
+- Style:
 
-3. Run the game
-py battleship.py
+  - Code checked with PEP8/Flake8, no major warnings.
 
+- UX tested on:
 
-(or python3 battleship.py depending on system)
+   - VS Code terminal
 
-📖 Instructions for Playing
+   - Windows PowerShell
 
-The game starts by displaying two 8×8 grids:
+   - Replit console
 
-Enemy Fleet (hidden ships, revealed as you hit/miss).
+   - PythonAnywhere
 
-Your Fleet (shows user ships 🚢).
+-------------------------------------------------------------------
 
-Ships are placed randomly on both sides.
+🗂️ Technologies Used
 
-On each turn:
+   - Python 3 — core language
 
-Enter a guess like A1, C7, or H8.
+   - Colorama — colored terminal text
 
-Results appear immediately on the grid.
+   - Wcwidth — ensures emojis align in grid
 
-After the user’s turn, the enemy fires at the user’s fleet.
+   - Git & GitHub — version control
 
-The game continues until:
+--------------------------------------------------------------------
 
-All enemy ships are sunk → Victory 🏆
+🚀 Deployment
 
-All user ships are sunk → Defeat 💀
+Run locally
 
-At any time, type Q to quit the game.
+   - Clone repo
 
-🔍 Testing & Validation
+   - Install dependencies (pip install -r requirements.txt)
 
-Input testing:
+   - Run with python3 battleship.py
 
-Invalid row input (e.g., Z5) → error message shown.
+Run online
 
-Invalid column input (e.g., A9) → error message shown.
+   - Linked with Replit for instant play in browser.
 
-Repeated guesses (e.g., A1 twice) → warning shown.
+   - Deployed on PythonAnywhere for cloud execution.
 
-Game logic:
-
-Ships placed randomly each run, verified over multiple plays.
-
-Both win and loss conditions tested manually.
-
-Linting:
-
-Code passes PEP8
- style checks.
-
-User experience:
-
-Game tested in Windows PowerShell and VS Code terminal.
-
-Emoji alignment validated using wcwidth.
-
-🗂️ Project Development (Git Workflow)
-
-Development tracked with Git & GitHub.
-
-Each feature/fix committed with a clear descriptive message, e.g.:
-
-Add alternating turns between player and enemy
-
-Fix emoji grid alignment with wcwidth
-
-Improve input validation and error messages
-
-Commits kept small and meaningful to show progression.
-
-🚀 Future Improvements
-
-Allow the user to choose grid size (e.g., 6×6, 10×10).
-
-Enable manual ship placement by the user.
-
-Add turn counter or scoring system.
-
-Support multiple ship sizes (like the classic Battleship game).
-
-Deploy to PythonAnywhere or Replit for easier access.
+----------------------------------------------------------------------
 
 👨‍💻 Credits
 
-colorama → for terminal text coloring.
+  - Colorama → terminal text coloring.
 
-wcwidth → for emoji width alignment.
+  - Wcwidth → emoji width alignment.
 
-General game logic and structure coded independently by the developer for assessment.
+  - ASCII Battleship art sourced from community ASCII art templates.
 
-📦 Deployment Notes
+  - Game logic designed independently by the developer.
 
-Currently, the game runs locally.
-For deployment to a cloud platform:
-
-Upload repository to GitHub.
-
-Link with PythonAnywhere or Replit.
-
-Ensure requirements.txt is included with:
-
-colorama
-wcwidth
-
-✅ Assessment Criteria Mapping
-
-LO1–LO3: Python loops, functions, lists, sets, and error handling implemented.
-
-LO4: README clearly explains the program.
-
-LO5: Errors tested and handled gracefully (invalid input, repeats).
-
-LO6: Libraries (colorama, wcwidth) used appropriately.
-
-LO7: Data model → 2D lists (boards) + sets (ships).
-
-LO8: GitHub commits document development.
-
-LO9: Deployment instructions provided.
+----------------------------------------------------------------------
 
 📜 Plagiarism Statement
-This project is an original work developed for the Diploma in Full Stack Software Development.
-All external libraries used (colorama, wcwidth) are properly credited.
-The project follows academic integrity guidelines and Code Institute’s assessment requirements.
+
+   This project is an original work developed for the Diploma in Full Stack Software Development.
+   All external resources (Colorama, Wcwidth) are credited.
+  
