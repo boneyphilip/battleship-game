@@ -170,9 +170,9 @@ class WelcomeScreen:
         tactical_orders = [
             "• Enter strike coordinates such as A1, C7, or H8",
             f"• Radar symbols:  {HIT} Direct hit on enemy ship",
-            f"             {MISS} Splash! Shot missed",
-            f"         {WATER} Untouched waters",
-            f"                       {SHIP_CHAR} Your ship positions (your radar only)",  # noqa: E501
+            f"            {MISS} Splash! Shot missed",
+            f"          {WATER} Untouched waters",
+            f"              {SHIP_CHAR} Your ship positions (your radar only)",
         ]
         for line in tactical_orders:
             print(self.center_text(line))
@@ -192,7 +192,7 @@ class WelcomeScreen:
             time.sleep(0.15)
 
         # Closing line
-        print("\n" + Fore.CYAN + self.center_text(
+        print("\n" + self.center_text(
             "Stay sharp, Commander. The fate of the fleet rests "
             "in your hands."
         ) + "\n")
@@ -205,6 +205,8 @@ class WelcomeScreen:
             Style.RESET_ALL
         )
         input()
+        clear_screen()
+
         clear_screen()
 
 
@@ -336,49 +338,36 @@ class BattleshipGame:
         self._end_screen()
 
     def _player_turn(self):
-        """Ask player for input and resolve strike safely."""
-        guess = input(
-                "\nEnter position (e.g., A1) or Q to quit: "
-                ).strip().upper()
-
+        """Ask player for input and resolve strike."""
+        guess = input("\nEnter position (e.g., A1) or Q to quit: "
+                      ).strip().upper()
         if guess == "Q":
             clear_screen()
             print("👋 Game ended by user.")
             exit()
 
-        # Must be at least 2 characters (Letter+Number)
         if len(guess) < 2:
             self.player_msg = "❌ Format must be Letter+Number (e.g., A1)."
             return
 
-        row_letter = guess[0]
-        digits = guess[1:]
-
-        # Validate row (letter within grid)
-        if not ("A" <= row_letter <= chr(65 + self.size - 1)):
-            self.player_msg = (
-                f"❌ Row must be between A and {chr(64 + self.size)}."
-            )
-            return
-
-        # Validate column (must be digits within range)
+        row_letter, digits = guess[0], guess[1:]
         if not digits.isdigit():
             self.player_msg = "❌ Column must be a number (e.g., A1)."
             return
 
-        c = int(digits) - 1
         r = ord(row_letter) - 65
-
-        if not (0 <= c < self.size):
-            self.player_msg = f"❌ Column must be 1–{self.size}."
+        c = int(digits) - 1
+        if not (0 <= r < self.size and 0 <= c < self.size):
+            self.player_msg = (
+                f"❌ Coordinates must be A–{chr(64 + self.size)} "
+                f"+ 1–{self.size}."
+            )
             return
 
-        # Prevent re-shooting same cell
         if self.enemy_view[r][c] in (MISS, HIT):
             self.player_msg = "⚠️ Already tried that sector."
             return
 
-        # Record shot
         self.total_player_shots += 1
         if (r, c) in self.enemy_ships:
             self.enemy_view[r][c] = HIT
@@ -444,40 +433,33 @@ class BattleshipGame:
 
 # ========= 3) Run Game =========
 if __name__ == "__main__":
-    try:
-        # Title ASCII art for welcome screen
-        title_lines = [
-            ("██████   █████  ████████ ████████ ██      ███████ ███████ "
-             "██   ██ ██ ██████  ███████"),
-            ("██   ██ ██   ██    ██       ██    ██      ██      ██      "
-             "██   ██ ██ ██   ██ ██     "),
-            ("██████  ███████    ██       ██    ██      █████   ███████ "
-             "███████ ██ ██████  ███████"),
-            ("██   ██ ██   ██    ██       ██    ██      ██           ██ "
-             "██   ██ ██ ██           ██"),
-            ("██████  ██   ██    ██       ██    ███████ ███████ ███████ "
-             "██   ██ ██ ██      ███████"),
-        ]
+    title_lines = [
+        ("██████   █████  ████████ ████████ ██      ███████ ███████ "
+         "██   ██ ██ ██████  ███████"),
+        ("██   ██ ██   ██    ██       ██    ██      ██      ██      "
+         "██   ██ ██ ██   ██ ██     "),
+        ("██████  ███████    ██       ██    ██      █████   ███████ "
+         "███████ ██ ██████  ███████"),
+        ("██   ██ ██   ██    ██       ██    ██      ██           ██ "
+         "██   ██ ██ ██           ██"),
+        ("██████  ██   ██    ██       ██    ███████ ███████ ███████ "
+         "██   ██ ██ ██      ███████"),
+    ]
 
-        # Battleship ASCII art
-        ship_art = r"""
-    ⣠⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+    ship_art = r"""
+   ⣠⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠰⠶⢿⡶⠦⠄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⢀⣀⣿⣿⣿⣿⣿⣿⡇⢀⠀⢀⡀⠀⣀⣀⣠⣀⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠉⠻⠿⣿⣿⣿⣿⣿⣶⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣽⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣶⣿⣿⣶⣶⣾⣧⣤⣴⣆⣀⢀⣤⡄⠀⠀⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 """
 
-        # Run cinematic welcome
-        ws = WelcomeScreen(title_lines, ship_art, width=100)
-        ws.show_title()
-        ws.show_ship()
-        size, ships = ws.get_inputs()
-        ws.mission_briefing(size, ships)
+    # Run cinematic welcome
+    ws = WelcomeScreen(title_lines, ship_art, width=100)
+    ws.show_title()
+    ws.show_ship()
+    size, ships = ws.get_inputs()
+    ws.mission_briefing(size, ships)
 
-        # Start the game
-        game = BattleshipGame(size=size, num_ships=ships)
-        game.play()
-
-    except KeyboardInterrupt:
-        clear_screen()
-        print("\n👋 Game interrupted by user. Goodbye, Commander!")
+    # Start the game
+    game = BattleshipGame(size=size, num_ships=ships)
+    game.play()
