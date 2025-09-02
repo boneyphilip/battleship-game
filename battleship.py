@@ -336,36 +336,49 @@ class BattleshipGame:
         self._end_screen()
 
     def _player_turn(self):
-        """Ask player for input and resolve strike."""
-        guess = input("\nEnter position (e.g., A1) or Q to quit: "
-                      ).strip().upper()
+        """Ask player for input and resolve strike safely."""
+        guess = input(
+                "\nEnter position (e.g., A1) or Q to quit: "
+                ).strip().upper()
+
         if guess == "Q":
             clear_screen()
             print("👋 Game ended by user.")
             exit()
 
+        # Must be at least 2 characters (Letter+Number)
         if len(guess) < 2:
             self.player_msg = "❌ Format must be Letter+Number (e.g., A1)."
             return
 
-        row_letter, digits = guess[0], guess[1:]
+        row_letter = guess[0]
+        digits = guess[1:]
+
+        # Validate row (letter within grid)
+        if not ("A" <= row_letter <= chr(65 + self.size - 1)):
+            self.player_msg = (
+                f"❌ Row must be between A and {chr(64 + self.size)}."
+            )
+            return
+
+        # Validate column (must be digits within range)
         if not digits.isdigit():
             self.player_msg = "❌ Column must be a number (e.g., A1)."
             return
 
-        r = ord(row_letter) - 65
         c = int(digits) - 1
-        if not (0 <= r < self.size and 0 <= c < self.size):
-            self.player_msg = (
-                f"❌ Coordinates must be A–{chr(64 + self.size)} "
-                f"+ 1–{self.size}."
-            )
+        r = ord(row_letter) - 65
+
+        if not (0 <= c < self.size):
+            self.player_msg = f"❌ Column must be 1–{self.size}."
             return
 
+        # Prevent re-shooting same cell
         if self.enemy_view[r][c] in (MISS, HIT):
             self.player_msg = "⚠️ Already tried that sector."
             return
 
+        # Record shot
         self.total_player_shots += 1
         if (r, c) in self.enemy_ships:
             self.enemy_view[r][c] = HIT
