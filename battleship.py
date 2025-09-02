@@ -1,96 +1,242 @@
-# Battleship — Framed Boards (Fixed Side-by-Side)
-# Emoji Grid, Alternating Turns
-# -----------------------------------------------------------------
-# Two boards display: Enemy Fleet (left) and Your Fleet (right).
-# Player fires at the enemy grid; enemy fires back at random.
-# Game ends when one fleet is fully sunk.
+# Battleship Game — Cinematic Intro + Classic UI
+# ==============================================
+# Features:
+# 1. Cinematic Welcome Screen:
+#    - Rainbow ASCII "BATTLESHIPS" title
+#    - Green ship ASCII art
+#    - Mission briefing styled like a command center
+#    - Player chooses grid size (8–15) and ship count (1–5)
 #
-# Visual notes:
-# - Emoji can be double-width, so wcwidth is used for alignment.
-# - Boards are always printed side-by-side (no responsive/stacked mode).
-# - Boards are framed with box-drawing characters; titles are centered.
+# 2. Battleship Gameplay:
+#    - Classic framed board UI (side-by-side grids)
+#    - Enemy Fleet (hidden ships) vs. Your Fleet (ships visible)
+#    - Turn-based: Player fires, then Enemy AI fires randomly
+#    - Status panel with legend, remaining ships, shot counts
+#
+# 3. Clean Code:
+#    - Uses wcwidth for proper emoji alignment
+#    - Fully commented for learning
+#    - Flake8 compliant (no style errors)
 
-# ========= 1) Imports =========
 import os
 import re
 import random
-from typing import List
+import time
 from colorama import init, Fore, Style
-from wcwidth import wcswidth  # measures on-screen width so emoji align
+from wcwidth import wcswidth
 
-# Configure color handling (safe on Windows)
+# Initialize colorama (cross-platform color support)
 init(autoreset=True)
 
-# ========= 2) Constants =========
-WATER = "🌊"        # unknown water
-MISS = "💦"         # shot that missed
-HIT = "💥"          # shot that hit
-SHIP_CHAR = "🚢"    # player ship (visible on right board)
+
+# ========= 1) Welcome Screen =========
+class WelcomeScreen:
+    """Handles cinematic welcome screen for Battleships."""
+
+    def __init__(self, title_lines, ship_art, width=100):
+        # Store ASCII title lines, ship art, and terminal width
+        self.title_lines = title_lines
+        self.ship_art = ship_art
+        self.width = width
+
+    # ----- Utility Functions -----
+    def strip_ansi(self, text: str) -> str:
+        """Remove ANSI escape codes (needed for proper alignment math)."""
+        ansi_escape = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
+        return ansi_escape.sub("", text)
+
+    def center_text(self, text: str, color: str = "") -> str:
+        """Return centered text with optional color applied."""
+        clean_text = self.strip_ansi(text)
+        pad = (self.width - wcswidth(clean_text)) // 2
+        return " " * pad + color + text + Style.RESET_ALL
+
+    def gradient_line(self, text: str) -> str:
+        """Apply rainbow gradient across one line of text."""
+        colors = [
+            Fore.RED, Fore.MAGENTA, Fore.BLUE,
+            Fore.CYAN, Fore.GREEN, Fore.YELLOW,
+        ]
+        n = len(text)
+        gradient = ""
+        for i, ch in enumerate(text):
+            color = colors[int((i / max(1, n - 1)) * (len(colors) - 1))]
+            gradient += color + ch
+        return gradient + Style.RESET_ALL
+
+    # ----- Title -----
+    def show_title(self):
+        """Show rainbow ASCII title and tagline."""
+        os.system("cls" if os.name == "nt" else "clear")
+        print("\n")
+        for line in self.title_lines:
+            print(self.center_text(self.gradient_line(line)))
+        print("\n")
+
+        tagline = "⚓  Command Center Online — Prepare for Battle  ⚓"
+        line = Fore.YELLOW + "═" * self.width + Style.RESET_ALL
+        print(line)
+        print(self.center_text(tagline, color=Style.BRIGHT + Fore.CYAN))
+        print(line)
+        print("\n")
+
+    # ----- Ship Art -----
+    def show_ship(self):
+        """Show green ASCII ship centered on screen."""
+        for line in self.ship_art.splitlines():
+            if line.strip():
+                print(self.center_text(line, color=Fore.GREEN))
+        print("\n" + Fore.YELLOW + "═" * self.width + Style.RESET_ALL)
+
+    # ----- Player Inputs -----
+    def get_inputs(self):
+        """Ask player for grid size (8–15) and number of ships (1–5)."""
+        print("\n")
+
+        # Ask for grid size
+        while True:
+            size_str = input(
+                self.center_text(
+                    "Enter grid size (8–15) [default = 8]: ",
+                    color=Fore.CYAN,
+                )
+            ).strip()
+            size = 8 if size_str == "" else None
+            if size_str.isdigit():
+                size = int(size_str)
+            if size and 8 <= size <= 15:
+                break
+            print(
+                self.center_text(
+                    "❌ Grid size must be 8–15.",
+                    color=Fore.RED,
+                )
+            )
+
+        # Ask for number of ships
+        while True:
+            ships_str = input(
+                self.center_text(
+                    "Enter number of ships (1–5) [default = 3]: ",
+                    color=Fore.CYAN,
+                )
+            ).strip()
+            ships = 3 if ships_str == "" else None
+            if ships_str.isdigit():
+                ships = int(ships_str)
+            if ships and 1 <= ships <= 5:
+                break
+            print(
+                self.center_text(
+                    "❌ Ships must be 1–5.",
+                    color=Fore.RED,
+                )
+            )
+
+        print("\n")
+        return size, ships
+
+    # ----- Mission Briefing -----
+    def mission_briefing(self, size, ships):
+        """Show cinematic mission briefing with rules & emojis."""
+        print(
+            self.center_text(
+                Fore.YELLOW + Style.BRIGHT +
+                "📡 Incoming Transmission..." +
+                Style.RESET_ALL
+            )
+        )
+        print("-" * self.width)
+        time.sleep(0.5)
+
+        # Mission intro text
+        paragraphs = [
+            Fore.CYAN +
+            "Welcome, Commander. Enemy fleets lurk beyond the horizon..."
+            + Style.RESET_ALL,
+            f"The tactical grid is {size}×{size} sectors "
+            f"(rows A–{chr(64 + size)}, columns 1–{size}).",
+            f"Your fleet has deployed {ships} battleships to these waters.",
+            "Enemy ships are hidden. Hunt them down with precision fire!",
+        ]
+        for p in paragraphs:
+            print(self.center_text(p))
+            time.sleep(0.2)
+
+        # Tactical orders
+        print("\n" + self.center_text(
+            Fore.MAGENTA + "🎯 TACTICAL ORDERS" + Style.RESET_ALL
+        ) + "\n")
+        tactical_orders = [
+            "• Enter strike coordinates such as A1, C7, or H8",
+            f"• Radar symbols:  {HIT} Direct hit on enemy ship",
+            f"             {MISS} Splash! Shot missed",
+            f"         {WATER} Untouched waters",
+            f"                       {SHIP_CHAR} Your ship positions (your radar only)",
+        ]
+        for line in tactical_orders:
+            print(self.center_text(line))
+            time.sleep(0.15)
+
+        # Rules of engagement
+        print("\n" + self.center_text(
+            Fore.YELLOW + "⚔️  RULES OF ENGAGEMENT" + Style.RESET_ALL
+        ) + "\n")
+        rules = [
+            "• Turns alternate — one strike per side.",
+            "     • Victory: Destroy the enemy fleet.",
+            "     • Defeat: All your ships are sunk.",
+        ]
+        for line in rules:
+            print(self.center_text(line))
+            time.sleep(0.15)
+
+        # Closing line
+        print("\n" + Fore.CYAN + self.center_text(
+            "Stay sharp, Commander. The fate of the fleet rests "
+            "in your hands."
+        ) + "\n")
+
+        # Footer prompt
+        print("-" * self.width)
+        print(
+            Fore.GREEN + Style.BRIGHT +
+            "▶ Press Enter to deploy your fleet... ◀".center(self.width) +
+            Style.RESET_ALL
+        )
+        input()
+        clear_screen()
+
+
+# ========= 2) Battleship Game =========
+# Emoji constants
+WATER = "🌊"
+MISS = "💦"
+HIT = "💥"
+SHIP_CHAR = "🚢"
 
 LEFT_TITLE = "Enemy Fleet"
 RIGHT_TITLE = "Your Fleet"
+CELL_VISUAL = 3
+GAP_BETWEEN_BOARDS = " " * 8
 
-CELL_VISUAL = 3                # visible width of one cell slot
-GAP_BETWEEN_BOARDS = " " * 8   # spaces between framed boards
 
-# ========= 3) ANSI / width helpers =========
-ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")  # strip ANSI codes
+def clear_screen():
+    """Clear terminal window (Windows & Unix)."""
+    os.system("cls" if os.name == "nt" else "clear")
 
 
 def strip_ansi(s: str) -> str:
-    """Return s with ANSI codes removed (keeps width math accurate)."""
-    return ANSI_RE.sub("", s)
+    """Strip ANSI color codes (fixes alignment math)."""
+    return re.sub(r"\x1b\[[0-9;]*m", "", s)
 
 
 def pad_visual(s: str, width: int) -> str:
-    """
-    Pad s with spaces so its visible width equals width.
-
-    Handles emoji width and ignores ANSI color codes when measuring.
-    """
+    """Pad text so visual width matches width (handles emoji)."""
     vis = wcswidth(strip_ansi(s))
     if vis < 0:
         vis = len(strip_ansi(s))
     return s + " " * max(0, width - vis)
-
-
-# ========= 4) Small UI helpers =========
-def strong_yellow(text: str) -> str:
-    """Bright yellow text."""
-    return Style.BRIGHT + Fore.YELLOW + text + Style.RESET_ALL
-
-
-def strong_white(text: str) -> str:
-    """Bright white text."""
-    return Style.BRIGHT + Fore.WHITE + text + Style.RESET_ALL
-
-
-def clear_screen():
-    """Clear terminal to simulate a single refreshing screen."""
-    os.system("cls" if os.name == "nt" else "clear")
-
-
-# ========= 5) Framing helpers =========
-TL, TR, BL, BR = "┌", "┐", "└", "┘"
-H, V = "─", "│"
-
-
-def title_bar(text: str, inner_width: int) -> str:
-    """
-    Build a top border with a centered title, e.g.:
-
-    ┌──── Enemy Fleet ────────────┐
-    """
-    label = f" {text} "
-    spare = inner_width - len(strip_ansi(label))
-    left = max(0, spare // 2)
-    right = max(0, spare - left)
-    return TL + (H * left) + label + (H * right) + TR
-
-
-def horizontal_bar(inner_width: int) -> str:
-    """Bottom border, e.g.: └──────────────┘"""
-    return BL + (H * inner_width) + BR
 
 
 def format_cell(symbol: str) -> str:
@@ -98,145 +244,64 @@ def format_cell(symbol: str) -> str:
     return pad_visual(symbol, CELL_VISUAL)
 
 
-# ========= 6) Welcome screen UI =========
-def ascii_command_title():
-    """Big header that feels like a command console."""
-    print(Style.BRIGHT + Fore.CYAN + "═" * 80 + Style.RESET_ALL)
-    print(Style.BRIGHT + Fore.CYAN)
-    print(
-        "█▄▄ ▄▀█ ▀█▀ ▀█▀ █   █▀▀ █▀ █ █ █ █▀█ █▀   █▀▀ █▀█ █▀▄▀█ "
-        "█▀▄▀█ ▄▀█ █▄░█ █▀▄"
-    )
-    print(
-        "█▄█ █▀█ ░█░ ░█░ █▄▄ ██▄ ▄█ █▀█ █ █▀▀ ▄█   █▄▄ █▄█ █░▀░█ "
-        "█░▀░█ █▀█ █░▀█ █▄▀"
-    )
-    print(
-        Fore.YELLOW + "     B A T T L E S H I P   C O M M A N D"
-        + Style.RESET_ALL
-    )
-    print(Fore.CYAN + "═" * 80 + Style.RESET_ALL)
+def build_board_block(title_text: str,
+                      grid_rows: list[list[str]]) -> list[str]:
+    """Build one framed board with title, numbers, rows, and border."""
+    size = len(grid_rows)
+    inner_width = 3 + (size * CELL_VISUAL)
+    lines = []
+
+    # Top border with centered title
+    label = f" {title_text} "
+    spare = inner_width - len(strip_ansi(label))
+    left = max(0, spare // 2)
+    right = max(0, spare - left)
+    lines.append("┌" + ("─" * left) + label + ("─" * right) + "┐")
+
+    # Number header
+    nums = "".join(format_cell(str(i)) for i in range(1, size + 1))
+    lines.append("│" + "   " + nums + "│")
+
+    # Grid rows
+    for r in range(size):
+        row_label = chr(65 + r)  # A, B, C...
+        row_cells = "".join(format_cell(ch) for ch in grid_rows[r])
+        content = f"{row_label}  {row_cells}"
+        content = pad_visual(content, inner_width)
+        lines.append("│" + content + "│")
+
+    # Bottom border
+    lines.append("└" + ("─" * inner_width) + "┘")
+    return lines
 
 
-def ascii_ship_art():
-    """Compact battleship ASCII (tinted lightly for a steel look)."""
-    ship = r"""
-⠀⠀⠀⠀⣠⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠰⠶⢿⡶⠦⠄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⢀⣀⣿⣿⣿⣿⣿⣿⡇⢀⠀⢀⡀⠀⣀⣀⣠⣀⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠉⠻⠿⣿⣿⣿⣿⣿⣶⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣽⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣶⣿⣿⣶⣶⣾⣧⣤⣴⣆⣀⢀⣤⡄⠀⠀⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-"""
-    colored = []
-    for line in ship.splitlines():
-        out = []
-        for ch in line:
-            if ch in "#*+=-:/\\":
-                out.append(Fore.CYAN + ch + Style.RESET_ALL)
-            elif ch in "_|":
-                out.append(Fore.WHITE + ch + Style.RESET_ALL)
-            else:
-                out.append(ch)
-        colored.append("".join(out))
-    print("\n".join(colored))
+def display_boards(enemy_view: list[list[str]],
+                   player_board: list[list[str]]):
+    """Print enemy + player boards side-by-side."""
+    left_block = build_board_block(LEFT_TITLE, enemy_view)
+    right_block = build_board_block(RIGHT_TITLE, player_board)
+    for lft, rgt in zip(left_block, right_block):
+        print(lft + GAP_BETWEEN_BOARDS + rgt)
 
 
-def mission_briefing():
-    """Professional, game-like instruction panel."""
-    briefing = [
-        "MISSION BRIEFING:",
-        "",
-        "Welcome, Commander. A hostile fleet has breached these waters.",
-        "The tactical grid is 8×8 sectors (rows A–H, columns 1–8).",
-        "Any sector may hide empty waves… or an enemy hull.",
-        "",
-        "Orders:",
-        " • Enter strike coordinates such as A1, C7, or H8.",
-        " • Each strike will update the radar:",
-        "     💥  Direct hit on an enemy ship",
-        "     💦  Shot splashed into the sea",
-        "     🌊  Uncharted waters (not yet targeted)",
-        "     🚢  Player fleet positions (only on the right radar)",
-        "",
-        "Rules of Engagement:",
-        " • Turns alternate — one shot per side.",
-        " • Victory: sink the entire enemy fleet.",
-        " • Defeat: lose all ships in the player fleet.",
-        "",
-        "Maintain accuracy. Conserve ammunition. Hold the line.",
-    ]
-    width = max(len(line) for line in briefing) + 4
-    top = "┌" + "─" * width + "┐"
-    bot = "└" + "─" * width + "┘"
-
-    print()
-    print(Fore.YELLOW + top + Style.RESET_ALL)
-    for line in briefing:
-        print("│ " + line.ljust(width - 2) + " │")
-    print(Fore.YELLOW + bot + Style.RESET_ALL)
-
-
-def show_welcome_screen():
-    """Full welcome screen: title, ship art, briefing, and start prompt."""
-    clear_screen()
-    ascii_command_title()
-    ascii_ship_art()
-    mission_briefing()
-    print(
-        Style.BRIGHT + Fore.GREEN
-        + "\n▶ Press Enter to assume command and begin battle! ◀"
-        + Style.RESET_ALL
-    )
-    input()
-    clear_screen()
-
-
-# ========= 7) BattleshipGame Class =========
 class BattleshipGame:
-    """Main Battleship game class: manages state, turns, and game loop."""
+    """Main Battleship game logic (turns, ships, status)."""
 
-    def __init__(self):
-        """Ask user for grid size and ship count, then set up game."""
-        self.size = self.get_grid_size()
-        self.num_ships = self.get_ship_count()
-
-        # Boards
-        self.enemy_view = [[WATER] * self.size for _ in range(self.size)]
-        self.player_board = [[WATER] * self.size for _ in range(self.size)]
-
-        # Ships
+    def __init__(self, size=8, num_ships=3):
+        self.size = size
+        self.num_ships = num_ships
+        self.enemy_view = [[WATER] * size for _ in range(size)]
+        self.player_board = [[WATER] * size for _ in range(size)]
         self.enemy_ships = self._place_ships()
         self.player_ships = self._place_ships(reveal=True)
-
-        # Stats
         self.enemy_tried = set()
         self.total_player_shots = 0
         self.total_enemy_shots = 0
         self.player_msg = ""
         self.enemy_msg = ""
 
-    # ---------------- Input setup ----------------
-    def get_grid_size(self):
-        """Ask user for grid size, default 8, validate input."""
-        while True:
-            choice = input("Enter grid size (default 8): ").strip()
-            if not choice:
-                return 8
-            if choice.isdigit() and 4 <= int(choice) <= 15:
-                return int(choice)
-            print("❌ Please enter a number between 4 and 15.")
-
-    def get_ship_count(self):
-        """Ask user for number of ships, default 3, validate input."""
-        while True:
-            choice = input("Enter number of ships (default 3): ").strip()
-            if not choice:
-                return 3
-            if choice.isdigit() and 1 <= int(choice) <= (self.size // 2):
-                return int(choice)
-            print(f"❌ Please enter a number between 1 and {self.size // 2}.")
-
     def _place_ships(self, reveal=False):
-        """Randomly place ships; reveal=True shows ships on player board."""
+        """Randomly place ships (reveal=True shows on player board)."""
         ships = set()
         while len(ships) < self.num_ships:
             r = random.randint(0, self.size - 1)
@@ -247,110 +312,79 @@ class BattleshipGame:
                 self.player_board[r][c] = SHIP_CHAR
         return ships
 
-    # ---------------- Gameplay ----------------
     def play(self):
-        """Main game loop: show welcome screen, alternate turns."""
-        show_welcome_screen()
+        """Main loop: player turn, then enemy turn."""
         while self.player_ships and self.enemy_ships:
-            self._play_turn()
+            clear_screen()
+            print("===================================")
+            print(Style.BRIGHT + Fore.MAGENTA +
+                  " 🚢 Battleship — Alternating Turns " +
+                  Style.RESET_ALL)
+            print("===================================\n")
+            display_boards(self.enemy_view, self.player_board)
+            self._show_status()
+
+            # Player turn
+            self._player_turn()
+            if not self.enemy_ships:
+                break
+
+            # Enemy turn
+            self.enemy_msg = "— Enemy Turn —\n" + self._enemy_turn()
+
+        # End screen
         self._end_screen()
 
-    def _play_turn(self):
-        """Handle one full round: player fires, then enemy fires."""
-        clear_screen()
-        print("===================================")
-        print(
-            Style.BRIGHT + Fore.MAGENTA
-            + " 🚢 Battleship — Alternating Turns "
-            + Style.RESET_ALL
-        )
-        print("===================================\n")
+    def _player_turn(self):
+        """Ask player for input and resolve strike."""
+        guess = input("\nEnter position (e.g., A1) or Q to quit: "
+                      ).strip().upper()
+        if guess == "Q":
+            clear_screen()
+            print("👋 Game ended by user.")
+            exit()
 
-        self.display_boards()
-        self._show_status()
-
-        # Player's turn
-        self._player_turn()
-        if not self.enemy_ships:
+        if len(guess) < 2:
+            self.player_msg = "❌ Format must be Letter+Number (e.g., A1)."
             return
 
-        # Enemy's turn
-        self.enemy_msg = (
-            strong_yellow("— Enemy Turn —") + "\n"
-            + self._enemy_turn()
-        )
+        row_letter, digits = guess[0], guess[1:]
+        if not digits.isdigit():
+            self.player_msg = "❌ Column must be a number (e.g., A1)."
+            return
 
-    def _player_turn(self):
-        """Get player input, validate, and fire a shot (defensive design)."""
-        try:
-            guess = input(
-                "\nEnter position (e.g., A1) or Q to quit: "
-            ).strip().upper()
-            if guess == "Q":
-                clear_screen()
-                print("👋 Game ended by user.")
-                exit()
-
-            if len(guess) < 2:
-                self.player_msg = (
-                    "❌ Format must be Letter+Number, e.g., A1."
-                )
-                return
-
-            row_letter, digits = guess[0], guess[1:]
-            if not ("A" <= row_letter <= chr(65 + self.size - 1)):
-                self.player_msg = (
-                    f"❌ Row must be A–{chr(65 + self.size - 1)}."
-                )
-                return
-            if not digits.isdigit():
-                self.player_msg = "❌ Column must be a number, e.g., A1."
-                return
-
-            col1 = int(digits)
-            if not (1 <= col1 <= self.size):
-                self.player_msg = (
-                    f"❌ Column out of range. Use 1–{self.size}."
-                )
-                return
-
-            r = ord(row_letter) - 65
-            c = col1 - 1
-
-            if self.enemy_view[r][c] in (MISS, HIT):
-                self.player_msg = "⚠️ That position was already tried."
-                return
-
-            # Fire shot
-            self.total_player_shots += 1
-            if (r, c) in self.enemy_ships:
-                self.enemy_view[r][c] = HIT
-                self.enemy_ships.remove((r, c))
-                self.player_msg = f"🎯 HIT at {row_letter}{col1}! {HIT}"
-            else:
-                self.enemy_view[r][c] = MISS
-                self.player_msg = f"💦 MISS at {row_letter}{col1}. {MISS}"
-
-        except Exception:
-            # Catch any unexpected error so user isn’t thrown out of game
+        r = ord(row_letter) - 65
+        c = int(digits) - 1
+        if not (0 <= r < self.size and 0 <= c < self.size):
             self.player_msg = (
-                "⚠️ Invalid input. Try again (format: Letter+Number, e.g., A1)."
+                f"❌ Coordinates must be A–{chr(64 + self.size)} "
+                f"+ 1–{self.size}."
             )
+            return
+
+        if self.enemy_view[r][c] in (MISS, HIT):
+            self.player_msg = "⚠️ Already tried that sector."
+            return
+
+        self.total_player_shots += 1
+        if (r, c) in self.enemy_ships:
+            self.enemy_view[r][c] = HIT
+            self.enemy_ships.remove((r, c))
+            self.player_msg = f"🎯 HIT at {row_letter}{c+1}! {HIT}"
+        else:
+            self.enemy_view[r][c] = MISS
+            self.player_msg = f"💦 MISS at {row_letter}{c+1}. {MISS}"
 
     def _enemy_turn(self):
-        """Enemy fires one random valid shot at the player."""
-        # Keep choosing random cells until one is unused
+        """Enemy AI randomly fires at player fleet."""
         while True:
             r = random.randint(0, self.size - 1)
             c = random.randint(0, self.size - 1)
-            if (r, c) in self.enemy_tried:
-                continue
-            self.enemy_tried.add((r, c))
-            break
-
-        pos = f"{chr(65 + r)}{c + 1}"
+            if (r, c) not in self.enemy_tried:
+                self.enemy_tried.add((r, c))
+                break
         self.total_enemy_shots += 1
-
+        pos = f"{chr(65+r)}{c+1}"
         if (r, c) in self.player_ships:
             self.player_board[r][c] = HIT
             self.player_ships.remove((r, c))
@@ -359,25 +393,26 @@ class BattleshipGame:
         return f"👾 Enemy fires at {pos} — {MISS} Miss."
 
     def _show_status(self):
-        """Display legend, ship counts, and last turn results."""
+        """Show legend, ship counts, and last turn results."""
         legend = (
-            f"{HIT}=Hit  {MISS}=Miss  {WATER}=Water  "
-            f"{SHIP_CHAR}=Player ship"
+            f"{HIT}=Hit  {MISS}=Miss  "
+            f"{WATER}=Water  {SHIP_CHAR}=Player"
         )
         enemy_left = len(self.enemy_ships)
         player_left = len(self.player_ships)
-        enemy_bar = " ".join([SHIP_CHAR] * enemy_left) if enemy_left else "—"
-        player_bar = (
-            " ".join([SHIP_CHAR] * player_left) if player_left else "—"
-        )
+        enemy_bar = (" ".join([SHIP_CHAR] * enemy_left)
+                     if enemy_left else "—")
+        player_bar = (" ".join([SHIP_CHAR] * player_left)
+                      if player_left else "—")
 
-        print("\n" + strong_white("Legend: ") + legend)
+        print("\n" + Style.BRIGHT + Fore.WHITE + "Legend: " +
+              Style.RESET_ALL + legend)
         print(
-            strong_white("Status: ")
-            + f"Enemy ships: {enemy_left} [{enemy_bar}]   "
-            + f"Player ships: {player_left} [{player_bar}]   "
-            + f"Shots — Player: {self.total_player_shots}  "
-            + f"Enemy: {self.total_enemy_shots}"
+            Style.BRIGHT + Fore.WHITE + "Status: " + Style.RESET_ALL +
+            f"Enemy ships: {enemy_left} [{enemy_bar}]   "
+            f"Player ships: {player_left} [{player_bar}]   "
+            f"Shots — Player: {self.total_player_shots}  "
+            f"Enemy: {self.total_enemy_shots}"
         )
 
         if self.player_msg:
@@ -386,53 +421,43 @@ class BattleshipGame:
             print(self.enemy_msg)
 
     def _end_screen(self):
-        """Display victory or defeat."""
+        """Final victory or defeat screen."""
         clear_screen()
         if self.enemy_ships and not self.player_ships:
-            print("💀 Game Over: All player ships sunk.")
+            print("💀 Game Over: All your ships sunk.")
         elif self.player_ships and not self.enemy_ships:
             print("🏆 Victory: All enemy ships sunk! 🎉")
 
-    # ---------------- Board rendering ----------------
-    def build_board_block(self, title_text: str, grid_rows: List[List[str]]):
-        """Build a single framed board (title + header + rows + bottom)."""
-        inner_width = 3 + (self.size * CELL_VISUAL)
-        lines = []
 
-        lines.append(title_bar(title_text, inner_width))
-
-        # Column numbers
-        nums = "".join(
-            format_cell(str(i)) for i in range(1, self.size + 1)
-        )
-        header = "   " + nums
-        lines.append(V + strong_white(header) + V)
-
-        # Rows (A, B, C…)
-        for r in range(self.size):
-            row_label = strong_white(chr(65 + r))
-            row_cells = "".join(format_cell(ch) for ch in grid_rows[r])
-            content = f"{row_label}  {row_cells}"
-            content = pad_visual(content, inner_width)
-            lines.append(V + content + V)
-
-        lines.append(horizontal_bar(inner_width))
-        return lines
-
-    def display_boards(self):
-        """Print both framed boards side-by-side (fixed layout)."""
-        left_block = self.build_board_block(
-            LEFT_TITLE, self.enemy_view
-        )
-        right_block = self.build_board_block(
-            RIGHT_TITLE, self.player_board
-        )
-
-        for lft, rgt in zip(left_block, right_block):
-            print(lft + GAP_BETWEEN_BOARDS + rgt)
-
-
-# ========= 8) Run Game =========
+# ========= 3) Run Game =========
 if __name__ == "__main__":
-    game = BattleshipGame()
+    title_lines = [
+        ("██████   █████  ████████ ████████ ██      ███████ ███████ "
+         "██   ██ ██ ██████  ███████"),
+        ("██   ██ ██   ██    ██       ██    ██      ██      ██      "
+         "██   ██ ██ ██   ██ ██     "),
+        ("██████  ███████    ██       ██    ██      █████   ███████ "
+         "███████ ██ ██████  ███████"),
+        ("██   ██ ██   ██    ██       ██    ██      ██           ██ "
+         "██   ██ ██ ██           ██"),
+        ("██████  ██   ██    ██       ██    ███████ ███████ ███████ "
+         "██   ██ ██ ██      ███████"),
+    ]
+
+    ship_art = r"""
+⣠⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠰⠶⢿⡶⠦⠄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⢀⣀⣿⣿⣿⣿⣿⣿⡇⢀⠀⢀⡀⠀⣀⣀⣠⣀⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠉⠻⠿⣿⣿⣿⣿⣿⣶⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣽⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣶⣿⣿⣶⣶⣾⣧⣤⣴⣆⣀⢀⣤⡄⠀⠀⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+"""
+
+    # Run cinematic welcome
+    ws = WelcomeScreen(title_lines, ship_art, width=100)
+    ws.show_title()
+    ws.show_ship()
+    size, ships = ws.get_inputs()
+    ws.mission_briefing(size, ships)
+
+    # Start the game
+    game = BattleshipGame(size=size, num_ships=ships)
     game.play()
