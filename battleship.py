@@ -8,10 +8,11 @@
 #    - Player chooses grid size (8–15) and ship count (1–5)
 #
 # 2. Battleship Gameplay:
+#    - ASCII "BATTLESHIPS" title reused in-game banner (plain white)
 #    - Classic framed board UI (side-by-side grids)
 #    - Enemy Fleet (hidden ships) vs. Your Fleet (ships visible)
 #    - Turn-based: Player fires, then Enemy AI fires randomly
-#    - Status panel with legend, remaining ships, shot counts
+#    - Status HUD: ships left, shot counters, immersive hit/miss messages
 #
 # 3. Clean Code:
 #    - Uses wcwidth for proper emoji alignment
@@ -34,14 +35,13 @@ class WelcomeScreen:
     """Handles cinematic welcome screen for Battleships."""
 
     def __init__(self, title_lines, ship_art, width=100):
-        # Store ASCII title lines, ship art, and terminal width
         self.title_lines = title_lines
         self.ship_art = ship_art
         self.width = width
 
     # ----- Utility Functions -----
     def strip_ansi(self, text: str) -> str:
-        """Remove ANSI escape codes (needed for proper alignment math)."""
+        """Remove ANSI escape codes (needed for alignment math)."""
         ansi_escape = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
         return ansi_escape.sub("", text)
 
@@ -207,8 +207,6 @@ class WelcomeScreen:
         input()
         clear_screen()
 
-        clear_screen()
-
 
 # ========= 2) Battleship Game =========
 # Emoji constants
@@ -289,7 +287,7 @@ def display_boards(enemy_view: list[list[str]],
 class BattleshipGame:
     """Main Battleship game logic (turns, ships, status)."""
 
-    def __init__(self, size=8, num_ships=3):
+    def __init__(self, size=8, num_ships=3, title_lines=None):
         self.size = size
         self.num_ships = num_ships
         self.enemy_view = [[WATER] * size for _ in range(size)]
@@ -301,6 +299,7 @@ class BattleshipGame:
         self.total_enemy_shots = 0
         self.player_msg = ""
         self.enemy_msg = ""
+        self.title_lines = title_lines or []
 
     def _place_ships(self, reveal=False):
         """Randomly place ships (reveal=True shows on player board)."""
@@ -314,17 +313,25 @@ class BattleshipGame:
                 self.player_board[r][c] = SHIP_CHAR
         return ships
 
+    def _print_ascii_banner(self):
+        """Print the ASCII 'BATTLESHIPS' banner above boards."""
+        board_width = 3 + (self.size * CELL_VISUAL)
+        total_width = (board_width * 2) + len(GAP_BETWEEN_BOARDS)
+        for line in self.title_lines:
+            print(line.center(total_width))
+        print()  # one blank line after banner
+
     def play(self):
         """Main loop: player turn, then enemy turn."""
         while self.player_ships and self.enemy_ships:
             clear_screen()
-            print("===================================")
-            print(Style.BRIGHT + Fore.MAGENTA +
-                  " 🚢 Battleship — Alternating Turns " +
-                  Style.RESET_ALL)
-            print("===================================\n")
+
+            # Show banner and boards
+            self._print_ascii_banner()
             display_boards(self.enemy_view, self.player_board)
-            self._show_status()
+
+            # Status bar for player turn
+            self._show_status(current_turn="Player")
 
             # Player turn
             self._player_turn()
@@ -332,15 +339,27 @@ class BattleshipGame:
                 break
 
             # Enemy turn
-            self.enemy_msg = "— Enemy Turn —\n" + self._enemy_turn()
+            self.enemy_msg = self._enemy_turn()
+
+            clear_screen()
+
+            # Show banner and boards again
+            self._print_ascii_banner()
+            display_boards(self.enemy_view, self.player_board)
+
+            # Status bar for enemy turn
+            self._show_status(current_turn="Enemy")
 
         # End screen
         self._end_screen()
 
     def _player_turn(self):
         """Ask player for input and resolve strike."""
-        guess = input("\nEnter position (e.g., A1) or Q to quit: "
-                      ).strip().upper()
+        guess = input(
+            Fore.YELLOW + "\nEnter position (e.g., A1) or Q to quit: "
+            + Style.RESET_ALL
+        ).strip().upper()
+
         if guess == "Q":
             clear_screen()
             print("👋 Game ended by user.")
@@ -372,10 +391,14 @@ class BattleshipGame:
         if (r, c) in self.enemy_ships:
             self.enemy_view[r][c] = HIT
             self.enemy_ships.remove((r, c))
-            self.player_msg = f"🎯 HIT at {row_letter}{c+1}! {HIT}"
+            self.player_msg = (
+                f"💥 Direct Hit! Enemy ship damaged at {row_letter}{c+1}!"
+            )
         else:
             self.enemy_view[r][c] = MISS
-            self.player_msg = f"💦 MISS at {row_letter}{c+1}. {MISS}"
+            self.player_msg = (
+                f"💦 Torpedo missed at {row_letter}{c+1}, enemy evaded!"
+            )
 
     def _enemy_turn(self):
         """Enemy AI randomly fires at player fleet."""
@@ -390,37 +413,55 @@ class BattleshipGame:
         if (r, c) in self.player_ships:
             self.player_board[r][c] = HIT
             self.player_ships.remove((r, c))
-            return f"👾 Enemy fires at {pos} — {HIT} Hit!"
+            return f"💥 Enemy fires at {pos} — Direct Hit!"
         self.player_board[r][c] = MISS
-        return f"👾 Enemy fires at {pos} — {MISS} Miss."
+        return f"💦 Enemy fires at {pos} — Torpedo missed, you evaded!"
 
-    def _show_status(self):
-        """Show legend, ship counts, and last turn results."""
-        legend = (
-            f"{HIT}=Hit  {MISS}=Miss  "
-            f"{WATER}=Water  {SHIP_CHAR}=Player"
-        )
+    def _show_status(self, current_turn="Player"):
+        """Show compact status bar and last turn results with colors."""
         enemy_left = len(self.enemy_ships)
         player_left = len(self.player_ships)
-        enemy_bar = (" ".join([SHIP_CHAR] * enemy_left)
-                     if enemy_left else "—")
-        player_bar = (" ".join([SHIP_CHAR] * player_left)
-                      if player_left else "—")
 
-        print("\n" + Style.BRIGHT + Fore.WHITE + "Legend: " +
-              Style.RESET_ALL + legend)
-        print(
-            Style.BRIGHT + Fore.WHITE + "Status: " + Style.RESET_ALL +
-            f"Enemy ships: {enemy_left} [{enemy_bar}]   "
-            f"Player ships: {player_left} [{player_bar}]   "
-            f"Shots — Player: {self.total_player_shots}  "
-            f"Enemy: {self.total_enemy_shots}"
+        player_bar = (
+            " ".join([SHIP_CHAR] * player_left)
+            if player_left else "—"
         )
 
+        enemy_bar = (
+            " ".join([SHIP_CHAR] * enemy_left)
+            if enemy_left else "—"
+        )
+
+        # Turn indicator with color
+        if current_turn == "Player":
+            turn_text = Fore.CYAN + "🎯 Turn: Player" + Style.RESET_ALL
+        else:
+            turn_text = Fore.MAGENTA + "👾 Turn: Enemy" + Style.RESET_ALL
+
+        # Compact status bar
+        print(
+            f"{turn_text} | "
+            f"Enemy ships: {enemy_left} {enemy_bar} | "
+            f"Your ships: {player_left} {player_bar}"
+        )
+        print(
+            f"Shots — Player: {self.total_player_shots} | "
+            f"Enemy: {self.total_enemy_shots}"
+        )
+        print()
+
+        # Flavor messages
         if self.player_msg:
-            print("\n" + self.player_msg)
+            print(Fore.CYAN + self.player_msg + Style.RESET_ALL)
         if self.enemy_msg:
-            print(self.enemy_msg)
+            print(Fore.MAGENTA + self.enemy_msg + Style.RESET_ALL)
+
+        # Legend footer
+        legend = (
+            f"{HIT}=Hit   {MISS}=Miss   "
+            f"{WATER}=Water   {SHIP_CHAR}=Player"
+        )
+        print("\n" + Fore.YELLOW + "Legend: " + Style.RESET_ALL + legend)
 
     def _end_screen(self):
         """Final victory or defeat screen."""
@@ -447,7 +488,7 @@ if __name__ == "__main__":
     ]
 
     ship_art = r"""
-   ⣠⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⣠⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠰⠶⢿⡶⠦⠄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⢀⣀⣿⣿⣿⣿⣿⣿⡇⢀⠀⢀⡀⠀⣀⣀⣠⣀⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠉⠻⠿⣿⣿⣿⣿⣿⣶⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣽⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣶⣿⣿⣶⣶⣾⣧⣤⣴⣆⣀⢀⣤⡄⠀⠀⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
@@ -461,5 +502,5 @@ if __name__ == "__main__":
     ws.mission_briefing(size, ships)
 
     # Start the game
-    game = BattleshipGame(size=size, num_ships=ships)
+    game = BattleshipGame(size=size, num_ships=ships, title_lines=title_lines)
     game.play()
