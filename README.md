@@ -12,7 +12,7 @@
 
 *Battleships Game – Python Terminal Edition*  
 
-⣠⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+    ⣠⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠰⠶⢿⡶⠦⠄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⢀⣀⣿⣿⣿⣿⣿⣿⡇⢀⠀⢀⡀⠀⣀⣀⣠⣀⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠉⠻⠿⣿⣿⣿⣿⣿⣶⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣽⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣶⣿⣿⣶⣶⣾⣧⣤⣴⣆⣀⢀⣤⡄⠀⠀⣀⡀⠀
@@ -29,6 +29,8 @@ The player battles against the computer with alternating turns until one fleet i
 This project was developed as part of the **Python Essentials Portfolio Project** (Full Stack Software Development Diploma).  
 It demonstrates core Python skills: loops, functions, lists, input validation, error handling, and use of external libraries.
 
+
+
 ---
 
 ## 🎯 Project Purpose
@@ -38,28 +40,52 @@ It demonstrates core Python skills: loops, functions, lists, input validation, e
 
 ---
 
-## 🛠️ Features
+## 🌊 Project Overview
 
-### Core Features
-- Two side-by-side boards:
-  - **Enemy Fleet** → shows only discovered hits 💥 and misses 💦  
-  - **Your Fleet** → shows your ships 🚢 plus hits & misses  
-- Turn-based play: player and computer alternate shots.  
-- Random ship placement for replayability.  
-- Input validation prevents invalid or repeated guesses.  
-- Victory / defeat messages when the game ends.  
-
-### Visual Enhancements
-- **Color-coded feedback** with `colorama`:  
-  - Hits → Red 💥  
-  - Misses → Blue 💦  
-  - Fleet names → Yellow  
-- **Emoji-based grid display** with `wcwidth` for alignment.  
-- **Mission briefing screen** with typing effect.  
-- **ASCII Battleship art and gradient title** on welcome screen.  
+**Battleship Command** is a Python-based command-line game where you challenge a hidden computer fleet on a dynamic grid.  
+With a rainbow ASCII title screen, mission briefings, and emoji-rich board visuals, this experience is as educational as it is entertaining.
 
 ---
 
+## ✨ Features 
+
+- **Cinematic Intro**:  
+  - Rainbow gradient ASCII title — **BATTLESHIPS**  
+  - Centered green ASCII ship art  
+  - Mission briefing with tactical orders & rules
+
+- **Custom Gameplay**:  
+  - Choose grid size (8–15) & ship count (1–5)  
+  - Validations for all inputs (defaults applied if blank)  
+
+- **Classic Battleship Logic**:  
+  - Side-by-side framed boards: "Enemy Fleet" vs. "Your Fleet"  
+  - Emojis:  
+    - 🌊 water  
+    - 💦 miss  
+    - 💥 hit  
+    - 🚢 ship  
+  - Alternating turns: player fires, then computer fires
+
+- **Status Panel**:  
+  - Legend, ship counts, shots taken, and last-turn results
+
+- **Endgame Messages**:  
+  - **Victory**: 🏆 all enemy ships sunk  
+  - **Defeat**: 💀 all your ships lost  
+
+- **Robustness**:  
+  - Friendly quit option (`Q`)  
+  - Handles invalid and repeated inputs gracefully  
+
+---
+
+
+##Game Flow Diagram
+  
+  ![flow chart](docs/images/game-flow.png)
+------------------------------
+  
 ## 📖 How to Play
 
 1. Clone the repository:  
@@ -75,6 +101,21 @@ It demonstrates core Python skills: loops, functions, lists, input validation, e
 3. Run the game:
 
    python3 battleship.py
+--------------------------------------------------------------------------
+## Deployment
+
+The Battleship game was deployed on [Replit](https://replit.com/@boneyphilip/battleship-game?v=1).
+
+### Steps to deploy:
+1. Created a new Python Replit project.
+2. Uploaded `battleship.py` and necessary files.
+3. Installed required libraries (`colorama`, `wcwidth`) via the Replit package manager.
+4. Ran the game inside the Replit online terminal.
+
+### Access
+The game can be played directly in the browser by visiting:
+
+👉 [Play Battleship on Replit](https://replit.com/@boneyphilip/battleship-game?v=1)
 
 --------------------------------------------------------------------------
    📸 Screenshots
@@ -83,33 +124,32 @@ It demonstrates core Python skills: loops, functions, lists, input validation, e
 
 - Welcome Screen
   
-   ![Welcome Screen](docs/images/welcome.png)
+   ![Welcome Screen](docs/images/rep-briefing.png)
 
 - Mission Briefing
 
-  ![Mission Briefing](docs/images/briefing.png)
+  ![Mission Briefing](docs/images/rep-briefing.png)
 
 - Game Board Example
 
-  ![Game Board](docs/images/board.png)
+  ![Game Board](docs/images/rep-board.png)
 
 ------------------------------------------------------------------------
 
   🧪 Testing & Validation
 
-- Input validation tested:
+| Scenario            | Input            | Expected Behavior         | Result |
+| ------------------- | ---------------- | ------------------------- | ------ |
+| Empty grid size     | ↵                | Defaults to 8             | Pass   |
+| Invalid grid size   | 20               | Error: must be 8–15       | Pass   |
+| Empty ship count    | ↵                | Defaults to 3             | Pass   |
+| Invalid ship count  | 6                | Error: must be 1–5        | Pass   |
+| Invalid shot format | `Z9`             | Error: valid A–X + number | Pass   |
+| Repeated shot       | Same coord twice | Warning: already tried    | Pass   |
+| Immediate quit      | `Q`              | Ends game politely        | Pass   |
+| Full game won       | Sink all enemy   | Victory screen shown      | Pass   |
+| Full game lost      | All ships sunk   | Defeat screen shown       | Pass   |
 
-   - Invalid coordinates (e.g., Z5, 11A) rejected.
-
-   - Repeated guesses flagged.
-
-   - Out-of-range inputs blocked.
-
-- Gameplay tested:
-
-  - Both win and loss conditions verified.
-
-  - Ships placed randomly each run.
 
 - Style:
 
@@ -165,7 +205,7 @@ Run online
 
   - ASCII Battleship art sourced from community ASCII art templates.
 
-  - Game logic designed independently by the developer.
+  - Game logic designed independently by Boney Philip.
 
 ----------------------------------------------------------------------
 
