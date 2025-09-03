@@ -1,24 +1,4 @@
-# Battleship Game — Cinematic Intro + Classic UI
-# ==============================================
-# Features:
-# 1. Cinematic Welcome Screen:
-#    - Rainbow ASCII "BATTLESHIPS" title
-#    - Green ship ASCII art
-#    - Mission briefing styled like a command center
-#    - Player chooses grid size (8–15) and ship count (1–5)
-#
-# 2. Battleship Gameplay:
-#    - ASCII "BATTLESHIPS" title reused in-game banner (plain white)
-#    - Classic framed board UI (side-by-side grids)
-#    - Enemy Fleet (hidden ships) vs. Your Fleet (ships visible)
-#    - Turn-based: Player fires, then Enemy AI fires randomly
-#    - Status HUD: ships left, shot counters, immersive hit/miss messages
-#
-# 3. Clean Code:
-#    - Uses wcwidth for proper emoji alignment
-#    - Fully commented for learning
-#    - Flake8 compliant (no style errors)
-
+# Battleship Game
 import os
 import re
 import random
