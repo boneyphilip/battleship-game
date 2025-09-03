@@ -105,8 +105,6 @@ With a rainbow ASCII title screen, mission briefings, and emoji-rich board visua
 
 ## Deployment
 
-## Deployment
-
 This project was deployed using [Replit](https://replit.com).
 
 ⚠️ Note: As this is a **command-line game**, it does not run as a standalone website.  
