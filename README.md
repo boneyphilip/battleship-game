@@ -105,26 +105,18 @@ With a rainbow ASCII title screen, mission briefings, and emoji-rich board visua
 
 ## Deployment
 
-This project has been deployed to the cloud using [Replit](https://replit.com).  
-Replit is an online IDE and cloud platform that supports running Python command-line applications directly in the browser.  
-This makes it a good choice for deploying a CLI game like Battleship.
+## Deployment
 
-### Deployment Steps
+This project was deployed using [Replit](https://replit.com).
 
-1. Created a new Replit project and selected **Python** as the template.  
-2. Imported this GitHub repository into Replit.  
-3. Ensured the main script is set to `battleship.py` in the `.replit` file.  
-4. Installed the required Python libraries (`colorama`, `wcwidth`) in the Replit shell.  
-5. Clicked **Run** to test that the game starts correctly and accepts user input in the browser terminal.  
-6. Removed any commented-out or debug code before final deployment.  
-7. Set the Repl to **public** so it can be accessed without login.  
-8. Copied the public URL and tested it in an incognito browser to confirm accessibility.
+⚠️ Note: As this is a **command-line game**, it does not run as a standalone website.  
+Instead, it runs in the Replit online IDE console.  
 
-### Live Link
-
-You can play the Battleship game online here:  
-👉 [Play Battleship on Replit](https://replit.com/@boneyphilip/battleship-game?v=1)
-
+### How to Play on Replit
+1. Open the project link: [Battleship Game on Replit](https://replit.com/@boneyphilip/battleship-game?v=1)  
+2. Click the **Code** tab (if you see the README preview).  
+3. Press the green **Run** button at the top of the page.  
+4. The game will launch in the console on the right-hand side.  
 
 --------------------------------------------------------------------------
    📸 Screenshots
